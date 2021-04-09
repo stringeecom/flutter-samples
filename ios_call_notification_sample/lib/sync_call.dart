@@ -16,19 +16,22 @@ class SyncCall {
   int serial = 1;
   String callId = '';
   String uuid = ''; // uuid da su dung de show callkit
-  StringeeSignalingState callState =
-      StringeeSignalingState.calling; // trang thai cua StringeeCall
+  StringeeSignalingState callState = StringeeSignalingState.calling; // trang thai cua StringeeCall
 
   bool userRejected = false;
-  bool userAnswered =
-      false; // Người dùng đã click và nút answer ở màn hình incoming call của callkit hoặc của app
-  bool callAnswered =
-      false; // StringeeCall đã được answer (đã gọi hàm answer của StringeeCall object)
-  bool audioSessionActived =
-      false; // AudioSession của iOS đã được active thì khi answer call của Stringee mới kết nối thoại được
+  bool userAnswered = false; // Người dùng đã click và nút answer ở màn hình incoming call của callkit hoặc của app
+  bool callAnswered = false; // StringeeCall đã được answer (đã gọi hàm answer của StringeeCall object)
+  bool audioSessionActived = false; // AudioSession của iOS đã được active thì khi answer call của Stringee mới kết nối thoại được
 
   bool endedCallkit = false;
   bool endedStringeeCall = false;
+
+  bool isMute = false;
+  bool isSpeaker = false;
+  bool isVideo = false;
+  bool hasLocalStream = false;
+  bool hasRemoteStream = false;
+  bool isMirror = true; // Chi duoc su dung phia android
 
   bool showedCallkit() {
     return !uuid.isEmpty;
@@ -143,11 +146,13 @@ class SyncCall {
     return true;
   }
 
-  void switchCamera(bool isMirror) {
+  void switchCamera() {
     if (stringeeCall == null) {
       print("SyncCall switchCamera failed, stringeeCall: " + stringeeCall.toString());
       return;
     }
+
+    isMirror = !isMirror;
 
     stringeeCall.switchCamera(isMirror);
   }

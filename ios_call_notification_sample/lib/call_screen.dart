@@ -4,21 +4,19 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'call_manager.dart';
 import 'sync_call.dart';
 
-StringeeCall globalCall;
+// StringeeCall globalCall;
 
 class CallScreen extends StatefulWidget {
-  StringeeCall call;
+  // StringeeCall call;
   final String toUserId;
   final String fromUserId;
-
-  bool showIncomingUI = false;
-  
-  bool hasLocalStream = false;
-  bool hasRemoteStream = false;
-  
   bool isVideo = false;
-  bool isSpeaker = false;
-  bool isMirror = true;
+  bool showIncomingUI = false;
+
+  // bool hasLocalStream = false;
+  // bool hasRemoteStream = false;
+  // bool isSpeaker = false;
+  // bool isMirror = true;
 
   bool dismissFuncCalled = false;
 
@@ -27,7 +25,6 @@ class CallScreen extends StatefulWidget {
     @required this.fromUserId,
     @required this.toUserId,
     @required this.isVideo,
-    this.call,
   }) : super(key: key);
 
   @override
@@ -47,15 +44,20 @@ class CallScreenState extends State<CallScreen> {
     print("CallScreen - initState");
     // TODO: implement initState
     super.initState();
-    widget.isSpeaker = widget.isVideo;
-    widget.showIncomingUI = widget.call != null;
-    globalCall = widget.call;
-    makeOrInitAnswerCall();
+
+    if (CallManager.shared.syncCall == null) {
+      // Goi di
+      makeOutgoingCall();
+    } else {
+      // Goi den
+      widget.showIncomingUI = true;
+    }
+    // widget.showIncomingUI = widget.call != null;
 
     // Fix loi answer callkit trong background
-    if (CallManager.shared.syncCall != null && CallManager.shared.syncCall.userAnswered) {
-      widget.showIncomingUI = false;
-    }
+    // if (CallManager.shared.syncCall != null && CallManager.shared.syncCall.userAnswered) {
+    //   widget.showIncomingUI = false;
+    // }
   }
 
   @override
@@ -146,14 +148,14 @@ class CallScreenState extends State<CallScreen> {
           ]),
     );
 
-    Widget localView = (widget.hasLocalStream)
+    Widget localView = (CallManager.shared.syncCall.hasLocalStream)
         ? new StringeeVideoView(
-      globalCall.id,
+      CallManager.shared.syncCall.stringeeCall.id,
       true,
       color: Colors.white,
       alignment: Alignment.topRight,
       isOverlay: true,
-      isMirror: widget.isMirror,
+      isMirror: CallManager.shared.syncCall.isMirror,
       margin: EdgeInsets.only(top: 100.0, right: 25.0),
       height: 200.0,
       width: 150.0,
@@ -161,9 +163,9 @@ class CallScreenState extends State<CallScreen> {
     )
         : Placeholder();
 
-    Widget remoteView = (widget.hasRemoteStream)
+    Widget remoteView = (CallManager.shared.syncCall.hasRemoteStream)
         ? new StringeeVideoView(
-      globalCall.id,
+      CallManager.shared.syncCall.stringeeCall.id,
       false,
       color: Colors.blue,
       isOverlay: false,
@@ -180,54 +182,52 @@ class CallScreenState extends State<CallScreen> {
           localView,
           NameCalling,
           BottomContainer,
-          ButtonSwitchCamera(
-            isMirror: widget.isMirror,
-          ),
+          ButtonSwitchCamera(),
         ],
       ),
     );
   }
 
-  Future makeOrInitAnswerCall() async {
+  Future makeOutgoingCall() async {
     // Neu la truong hop goi di thi can tao StringeeCall
-    if (globalCall == null) {
-      globalCall = StringeeCall();
-    }
+    // if (globalCall == null) {
+    //   globalCall = StringeeCall();
+    // }
 
     // Listen events
-    globalCall.eventStreamController.stream.listen((event) {
-      Map<dynamic, dynamic> map = event;
-      switch (map['eventType']) {
-        case StringeeCallEvents.didChangeSignalingState:
-          handleSignalingStateChangeEvent(map['body']);
-          break;
-        case StringeeCallEvents.didChangeMediaState:
-          handleMediaStateChangeEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveCallInfo:
-          handleReceiveCallInfoEvent(map['body']);
-          break;
-        case StringeeCallEvents.didHandleOnAnotherDevice:
-          handleHandleOnAnotherDeviceEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveLocalStream:
-          handleReceiveLocalStreamEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveRemoteStream:
-          handleReceiveRemoteStreamEvent(map['body']);
-          break;
-        case StringeeCallEvents.didChangeAudioDevice:
-          if (Platform.isAndroid) {
-            handleChangeAudioDeviceEvent(
-                map['selectedAudioDevice'], globalCall);
-          }
-          break;
-        default:
-          break;
-      }
-    });
+    // globalCall.eventStreamController.stream.listen((event) {
+    //   Map<dynamic, dynamic> map = event;
+    //   switch (map['eventType']) {
+    //     case StringeeCallEvents.didChangeSignalingState:
+    //       handleSignalingStateChangeEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didChangeMediaState:
+    //       handleMediaStateChangeEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didReceiveCallInfo:
+    //       handleReceiveCallInfoEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didHandleOnAnotherDevice:
+    //       handleHandleOnAnotherDeviceEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didReceiveLocalStream:
+    //       handleReceiveLocalStreamEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didReceiveRemoteStream:
+    //       handleReceiveRemoteStreamEvent(map['body']);
+    //       break;
+    //     case StringeeCallEvents.didChangeAudioDevice:
+    //       if (Platform.isAndroid) {
+    //         handleChangeAudioDeviceEvent(
+    //             map['selectedAudioDevice'], globalCall);
+    //       }
+    //       break;
+    //     default:
+    //       break;
+    //   }
+    // });
 
-    if (widget.showIncomingUI) {
+    // if (widget.showIncomingUI) {
       // Truong hop cuoc goi den thi can goi ham initAnswer
       // globalCall.initAnswer().then((event) {
       //   bool status = event['status'];
@@ -235,7 +235,7 @@ class CallScreenState extends State<CallScreen> {
       //     clearDataEndDismiss();
       //   }
       // });
-    } else {
+    // } else {
       // Truong hop cuoc goi di thi can goi ham makeCall
       final parameters = {
         'from': widget.fromUserId,
@@ -245,23 +245,23 @@ class CallScreenState extends State<CallScreen> {
         'videoQuality': VideoQuality.hd,
       };
 
-      globalCall.makeCall(parameters).then((result) {
+      var outgoingCall = StringeeCall();
+      outgoingCall.makeCall(parameters).then((result) {
         bool status = result['status'];
         int code = result['code'];
         String message = result['message'];
         print(
-            'MakeCall CallBack --- $status - $code - $message - ${globalCall.id} - ${globalCall.from} - ${globalCall.to}');
+            'MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
 
         var syncCall = SyncCall();
-        syncCall.attachCall(globalCall);
+        syncCall.attachCall(outgoingCall);
         CallManager.shared.syncCall = syncCall;
 
         if (!status) {
-          // Navigator.pop(context);
-          clearDataEndDismiss();
+          CallManager.shared.clearDataEndDismiss();
         }
       });
-    }
+    // }
   }
 
   void endCallTapped() {
@@ -282,7 +282,7 @@ class CallScreenState extends State<CallScreen> {
 
     CallManager.shared.syncCall.hangup().then((status) {
       if (Platform.isAndroid) {
-        clearDataEndDismiss();
+        CallManager.shared.clearDataEndDismiss();
       }
     });
   }
@@ -324,7 +324,7 @@ class CallScreenState extends State<CallScreen> {
     CallManager.shared.syncCall.userRejected = true;
     CallManager.shared.syncCall.reject().then((status) {
       if (Platform.isAndroid) {
-        clearDataEndDismiss();
+        CallManager.shared.clearDataEndDismiss();
       }
     });
   }
@@ -337,119 +337,125 @@ class CallScreenState extends State<CallScreen> {
     print("changeToCallingUI, after: " + widget.showIncomingUI.toString());
   }
 
-  void handleSignalingStateChangeEvent(StringeeSignalingState state) {
-    print('handleSignalingStateChangeEvent - $state');
-    setState(() {
-      status = state.toString().split('.')[1];
-    });
-    CallManager.shared.syncCall.callState = state;
-    switch (state) {
-      case StringeeSignalingState.calling:
-        break;
-      case StringeeSignalingState.ringing:
-        break;
-      case StringeeSignalingState.answered:
-        break;
-      case StringeeSignalingState.busy:
-        CallManager.shared.syncCall.endedStringeeCall = true;
-        clearDataEndDismiss();
-        break;
-      case StringeeSignalingState.ended:
-        CallManager.shared.syncCall.endedStringeeCall = true;
-        clearDataEndDismiss();
-        break;
-      default:
-        break;
-    }
-  }
-
-  void handleMediaStateChangeEvent(StringeeMediaState state) {
-    print('handleMediaStateChangeEvent - $state');
-    setState(() {
-      status = state.toString().split('.')[1];
-    });
-    switch (state) {
-      case StringeeMediaState.connected:
-        break;
-      case StringeeMediaState.disconnected:
-        break;
-      default:
-        break;
-    }
-  }
-
-  void handleReceiveCallInfoEvent(Map<dynamic, dynamic> info) {
-    print('handleReceiveCallInfoEvent - $info');
-  }
-
-  void handleHandleOnAnotherDeviceEvent(StringeeSignalingState state) {
-    print('handleHandleOnAnotherDeviceEvent - $state');
-  }
-
-  void handleReceiveLocalStreamEvent(String callId) {
-    print('handleReceiveLocalStreamEvent - $callId');
-    setState(() {
-      widget.hasLocalStream = true;
-    });
-  }
-
-  void handleReceiveRemoteStreamEvent(String callId) {
-    print('handleReceiveRemoteStreamEvent - $callId');
-    setState(() {
-      widget.hasRemoteStream = true;
-    });
-  }
-
-  void handleChangeAudioDeviceEvent(
-      AudioDevice audioDevice, StringeeCall call) {
-    print('handleChangeAudioDeviceEvent - $audioDevice');
-    switch (audioDevice) {
-      case AudioDevice.speakerPhone:
-      case AudioDevice.earpiece:
-        if (call != null) {
-          call.setSpeakerphoneOn(widget.isSpeaker);
-        }
-        break;
-      case AudioDevice.bluetooth:
-      case AudioDevice.wiredHeadset:
-        widget.isSpeaker = false;
-        if (call != null) {
-          call.setSpeakerphoneOn(widget.isSpeaker);
-        }
-        break;
-      case AudioDevice.none:
-        print('handleChangeAudioDeviceEvent - non audio devices connected');
-        break;
-    }
-  }
+  // void handleSignalingStateChangeEvent(StringeeSignalingState state) {
+  //   print('handleSignalingStateChangeEvent - $state');
+  //   setState(() {
+  //     status = state.toString().split('.')[1];
+  //   });
+  //   CallManager.shared.syncCall.callState = state;
+  //   switch (state) {
+  //     case StringeeSignalingState.calling:
+  //       break;
+  //     case StringeeSignalingState.ringing:
+  //       break;
+  //     case StringeeSignalingState.answered:
+  //       break;
+  //     case StringeeSignalingState.busy:
+  //       CallManager.shared.syncCall.endedStringeeCall = true;
+  //       clearDataEndDismiss();
+  //       break;
+  //     case StringeeSignalingState.ended:
+  //       CallManager.shared.syncCall.endedStringeeCall = true;
+  //       clearDataEndDismiss();
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
+  //
+  // void handleMediaStateChangeEvent(StringeeMediaState state) {
+  //   print('handleMediaStateChangeEvent - $state');
+  //   setState(() {
+  //     status = state.toString().split('.')[1];
+  //   });
+  //   switch (state) {
+  //     case StringeeMediaState.connected:
+  //       break;
+  //     case StringeeMediaState.disconnected:
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
+  //
+  // void handleReceiveCallInfoEvent(Map<dynamic, dynamic> info) {
+  //   print('handleReceiveCallInfoEvent - $info');
+  // }
+  //
+  // void handleHandleOnAnotherDeviceEvent(StringeeSignalingState state) {
+  //   print('handleHandleOnAnotherDeviceEvent - $state');
+  // }
+  //
+  // void handleReceiveLocalStreamEvent(String callId) {
+  //   print('handleReceiveLocalStreamEvent - $callId');
+  //   setState(() {
+  //     widget.hasLocalStream = true;
+  //   });
+  // }
+  //
+  // void handleReceiveRemoteStreamEvent(String callId) {
+  //   print('handleReceiveRemoteStreamEvent - $callId');
+  //   setState(() {
+  //     widget.hasRemoteStream = true;
+  //   });
+  // }
+  //
+  // void handleChangeAudioDeviceEvent(
+  //     AudioDevice audioDevice, StringeeCall call) {
+  //   print('handleChangeAudioDeviceEvent - $audioDevice');
+  //   switch (audioDevice) {
+  //     case AudioDevice.speakerPhone:
+  //     case AudioDevice.earpiece:
+  //       if (call != null) {
+  //         call.setSpeakerphoneOn(widget.isSpeaker);
+  //       }
+  //       break;
+  //     case AudioDevice.bluetooth:
+  //     case AudioDevice.wiredHeadset:
+  //       widget.isSpeaker = false;
+  //       if (call != null) {
+  //         call.setSpeakerphoneOn(widget.isSpeaker);
+  //       }
+  //       break;
+  //     case AudioDevice.none:
+  //       print('handleChangeAudioDeviceEvent - non audio devices connected');
+  //       break;
+  //   }
+  // }
 
   void changeButtonMuteState(bool mute) {
     _buttonMicroStateKey.currentState.updateUI(mute);
   }
 
-  void clearDataEndDismiss() {
-    print('clearDataEndDismiss');
+  // void clearDataEndDismiss() {
+  //   print('clearDataEndDismiss');
+  //   if (widget.dismissFuncCalled) {
+  //     return;
+  //   }
+  //   print('clearDataEndDismiss is executed');
+  //   widget.dismissFuncCalled = !widget.dismissFuncCalled;
+  //
+  //   CallManager.shared.endCallkit();
+  //   CallManager.shared.deleteSyncCallIfNeed();
+  //   CallManager.shared.callScreenKey = null;
+  //
+  //   globalCall.destroy();
+  //   Navigator.pop(context);
+  // }
+
+  void dismiss() {
     if (widget.dismissFuncCalled) {
       return;
     }
-    print('clearDataEndDismiss is executed');
     widget.dismissFuncCalled = !widget.dismissFuncCalled;
-
-    CallManager.shared.endCallkit();
-    CallManager.shared.deleteSyncCallIfNeed();
-    CallManager.shared.callScreenKey = null;
-
-    globalCall.destroy();
     Navigator.pop(context);
   }
 }
 
 class ButtonSwitchCamera extends StatefulWidget {
-  bool isMirror;
 
   ButtonSwitchCamera({
-    Key key,
-    this.isMirror,
+    Key key
   }) : super(key: key);
 
   @override
@@ -457,15 +463,13 @@ class ButtonSwitchCamera extends StatefulWidget {
 }
 
 class _ButtonSwitchCameraState extends State<ButtonSwitchCamera> {
-  bool _isMirror;
 
   void _toggleSwitchCamera() {
     if (CallManager.shared.syncCall == null) {
       return;
     }
 
-    _isMirror = !_isMirror;
-    CallManager.shared.syncCall.switchCamera(_isMirror);
+    CallManager.shared.syncCall.switchCamera();
     // globalCall.switchCamera(widget.isMirror).then((result) {
     //   bool status = result['status'];
     //   if (status) {}
@@ -475,7 +479,6 @@ class _ButtonSwitchCameraState extends State<ButtonSwitchCamera> {
   @override
   void initState() {
     super.initState();
-    _isMirror = widget.isMirror;
   }
 
   @override
@@ -548,7 +551,7 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
     return new GestureDetector(
       onTap: _toggleSpeaker,
       child: Image.asset(
-        _isSpeaker ? 'images/ic_speaker_off.png' : 'images/ic_speaker_on.png',
+        CallManager.shared.syncCall.isSpeaker ? 'images/ic_speaker_off.png' : 'images/ic_speaker_on.png',
         height: 75.0,
         width: 75.0,
       ),
