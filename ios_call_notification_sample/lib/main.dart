@@ -124,7 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    _client.connect(user2);
+    _client.connect(user1);
   }
 
 
