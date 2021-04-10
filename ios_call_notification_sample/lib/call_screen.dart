@@ -37,7 +37,7 @@ class CallScreen extends StatefulWidget {
 
 class CallScreenState extends State<CallScreen> {
   String status = "";
-  final GlobalKey<_ButtonMicroState> _buttonMicroStateKey = GlobalKey<_ButtonMicroState>();
+  // final GlobalKey<_ButtonMicroState> _buttonMicroStateKey = GlobalKey<_ButtonMicroState>();
 
   @override
   void initState() {
@@ -50,7 +50,7 @@ class CallScreenState extends State<CallScreen> {
       makeOutgoingCall();
     } else {
       // Goi den
-      widget.showIncomingUI = true;
+      widget.showIncomingUI = !CallManager.shared.syncCall.userAnswered;
     }
     // widget.showIncomingUI = widget.call != null;
 
@@ -84,7 +84,7 @@ class CallScreenState extends State<CallScreen> {
           new Container(
             alignment: Alignment.center,
             child: new Text(
-              '${status}',
+              '${CallManager.shared.syncCall != null ? CallManager.shared.syncCall.status : ""}',
               style: new TextStyle(
                 color: Colors.white,
                 fontSize: 20.0,
@@ -129,9 +129,9 @@ class CallScreenState extends State<CallScreen> {
             new Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
-                new ButtonSpeaker(isSpeaker: widget.isVideo),
-                new ButtonMicro(key: _buttonMicroStateKey, isMute: false),
-                new ButtonVideo(isVideoEnable: widget.isVideo),
+                new ButtonSpeaker(),
+                new ButtonMicro(),
+                new ButtonVideo(isVideo: widget.isVideo),
               ],
             ),
             new Container(
@@ -182,7 +182,7 @@ class CallScreenState extends State<CallScreen> {
           localView,
           NameCalling,
           BottomContainer,
-          ButtonSwitchCamera(),
+          widget.isVideo ? ButtonSwitchCamera() : Placeholder(),
         ],
       ),
     );
@@ -423,9 +423,9 @@ class CallScreenState extends State<CallScreen> {
   //   }
   // }
 
-  void changeButtonMuteState(bool mute) {
-    _buttonMicroStateKey.currentState.updateUI(mute);
-  }
+  // void changeButtonMuteState(bool mute) {
+  //   _buttonMicroStateKey.currentState.updateUI(mute);
+  // }
 
   // void clearDataEndDismiss() {
   //   print('clearDataEndDismiss');
@@ -502,11 +502,9 @@ class _ButtonSwitchCameraState extends State<ButtonSwitchCamera> {
 }
 
 class ButtonSpeaker extends StatefulWidget {
-  final bool isSpeaker;
 
   ButtonSpeaker({
     Key key,
-    @required this.isSpeaker,
   }) : super(key: key);
 
   @override
@@ -514,7 +512,6 @@ class ButtonSpeaker extends StatefulWidget {
 }
 
 class _ButtonSpeakerState extends State<ButtonSpeaker> {
-  bool _isSpeaker;
 
   void _toggleSpeaker() {
     // globalCall.setSpeakerphoneOn(!_isSpeaker).then((result) {
@@ -530,19 +527,12 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
       return;
     }
 
-    CallManager.shared.syncCall.setSpeakerphoneOn(!_isSpeaker).then((status) {
-      if (status) {
-        setState(() {
-          _isSpeaker = !_isSpeaker;
-        });
-      }
-    });
+    CallManager.shared.syncCall.setSpeakerphoneOn();
   }
 
   @override
   void initState() {
     super.initState();
-    _isSpeaker = widget.isSpeaker;
   }
 
   @override
@@ -560,11 +550,9 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
 }
 
 class ButtonMicro extends StatefulWidget {
-  final bool isMute;
 
   ButtonMicro({
     Key key,
-    @required this.isMute,
   }) : super(key: key);
 
   @override
@@ -572,7 +560,6 @@ class ButtonMicro extends StatefulWidget {
 }
 
 class _ButtonMicroState extends State<ButtonMicro> {
-  bool _isMute;
 
   void _toggleMicro() {
     // globalCall.mute(!_isMute).then((result) {
@@ -588,19 +575,18 @@ class _ButtonMicroState extends State<ButtonMicro> {
       return;
     }
 
-    CallManager.shared.syncCall.mute(!_isMute);
+    CallManager.shared.syncCall.mute();
   }
 
-  void updateUI(bool mute) {
-    setState(() {
-      _isMute = mute;
-    });
-  }
+  // void updateUI(bool mute) {
+  //   setState(() {
+  //     _isMute = mute;
+  //   });
+  // }
 
   @override
   void initState() {
     super.initState();
-    _isMute = widget.isMute;
   }
 
   @override
@@ -609,7 +595,7 @@ class _ButtonMicroState extends State<ButtonMicro> {
     return new GestureDetector(
       onTap: _toggleMicro,
       child: Image.asset(
-        _isMute ? 'images/ic_mute.png' : 'images/ic_mic.png',
+        CallManager.shared.syncCall.isMute ? 'images/ic_mute.png' : 'images/ic_mic.png',
         height: 75.0,
         width: 75.0,
       ),
@@ -618,11 +604,11 @@ class _ButtonMicroState extends State<ButtonMicro> {
 }
 
 class ButtonVideo extends StatefulWidget {
-  final bool isVideoEnable;
+  final bool isVideo;
 
   ButtonVideo({
     Key key,
-    @required this.isVideoEnable,
+    @required this.isVideo
   }) : super(key: key);
 
   @override
@@ -630,7 +616,6 @@ class ButtonVideo extends StatefulWidget {
 }
 
 class _ButtonVideoState extends State<ButtonVideo> {
-  bool _isVideoEnable;
 
   void _toggleVideo() {
     // globalCall.enableVideo(!_isVideoEnable).then((result) {
@@ -646,28 +631,21 @@ class _ButtonVideoState extends State<ButtonVideo> {
       return;
     }
 
-    CallManager.shared.syncCall.enableVideo(!_isVideoEnable).then((status) {
-      if (status) {
-        setState(() {
-          _isVideoEnable = !_isVideoEnable;
-        });
-      }
-    });
+    CallManager.shared.syncCall.enableVideo();
   }
 
   @override
   void initState() {
     super.initState();
-    _isVideoEnable = widget.isVideoEnable;
   }
 
   @override
   Widget build(BuildContext context) {
     // TODO: implement build
     return new GestureDetector(
-      onTap: widget.isVideoEnable ? _toggleVideo : null,
+      onTap: widget.isVideo ? _toggleVideo : null,
       child: Image.asset(
-        _isVideoEnable ? 'images/ic_video.png' : 'images/ic_video_off.png',
+        CallManager.shared.syncCall.videoEnabled ? 'images/ic_video.png' : 'images/ic_video_off.png',
         height: 75.0,
         width: 75.0,
       ),

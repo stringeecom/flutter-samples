@@ -28,10 +28,18 @@ class SyncCall {
 
   bool isMute = false;
   bool isSpeaker = false;
-  bool isVideo = false;
+  bool videoEnabled = false;
   bool hasLocalStream = false;
   bool hasRemoteStream = false;
   bool isMirror = true; // Chi duoc su dung phia android
+  var _status = '';
+
+  set status(value) {
+    _status = value;
+    updateUI();
+  }
+
+  get status => _status;
 
   bool showedCallkit() {
     return !uuid.isEmpty;
@@ -49,6 +57,7 @@ class SyncCall {
     stringeeCall = call;
     serial = call.serial;
     callId = call.id;
+    videoEnabled = call.isVideoCall;
   }
 
   void answerIfConditionPassed() {
@@ -124,25 +133,30 @@ class SyncCall {
     return status;
   }
 
-  void mute(bool mute) {
+  void mute({bool isMute}) {
     if (stringeeCall == null) {
       print("SyncCall mute failed, stringeeCall: " + stringeeCall.toString());
       return;
     }
 
-    stringeeCall.mute(mute);
-    if (CallManager.shared.callScreenKey != null) {
-      CallManager.shared.callScreenKey.currentState.changeButtonMuteState(mute);
+    if (isMute != null) {
+      this.isMute = isMute;
+    } else {
+      this.isMute = !this.isMute;
     }
+    stringeeCall.mute(this.isMute);
+    updateUI();
   }
 
-  Future<bool> setSpeakerphoneOn(bool isSpeaker) async {
+  Future<bool> setSpeakerphoneOn() async {
     if (stringeeCall == null) {
       print("SyncCall setSpeakerphoneOn failed, stringeeCall: " + stringeeCall.toString());
       return false;
     }
 
+    isSpeaker = !isSpeaker;
     await stringeeCall.setSpeakerphoneOn(isSpeaker);
+    updateUI();
     return true;
   }
 
@@ -157,21 +171,30 @@ class SyncCall {
     stringeeCall.switchCamera(isMirror);
   }
 
-  Future<bool> enableVideo(bool isVideoEnable) async {
+  Future<bool> enableVideo() async {
     if (stringeeCall == null) {
       print("SyncCall enableVideo failed, stringeeCall: " + stringeeCall.toString());
       return false;
     }
 
-    await stringeeCall.enableVideo(isVideoEnable);
+    videoEnabled = !videoEnabled;
+    await stringeeCall.enableVideo(videoEnabled);
+    updateUI();
     return true;
   }
 
   void endCallIfNeed() {
-    if (CallManager.shared.callScreenKey != null) {
-      CallManager.shared.callScreenKey.currentState.clearDataEndDismiss();
-    } else {
-      CallManager.shared.endCallkit();
+    CallManager.shared.clearDataEndDismiss();
+    // if (CallManager.shared.callScreenKey != null) {
+    //   CallManager.shared.callScreenKey.currentState.clearDataEndDismiss();
+    // } else {
+    //   CallManager.shared.endCallkit();
+    // }
+  }
+
+  void updateUI() {
+    if (CallManager.shared.callScreenKey != null && CallManager.shared.callScreenKey.currentState != null) {
+      CallManager.shared.callScreenKey.currentState.setState(() {});
     }
   }
 }

@@ -50,6 +50,9 @@ class CallManager with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     print('didChangeAppLifecycleState = $state');
     appLifecycleState = state;
+    if (state == AppLifecycleState.resumed && syncCall != null && syncCall.stringeeCall!= null) {
+      showCallScreen(syncCall.stringeeCall, contextToShowCallScreen);
+    }
   }
 
   /// Cac ham xu ly Callkit
@@ -138,7 +141,7 @@ class CallManager with WidgetsBindingObserver {
       return;
     }
 
-    syncCall.mute(mute);
+    syncCall.mute(isMute: mute);
   }
 
   Future<void> didPerformDTMFAction(String digit, String uuid) async {
@@ -222,12 +225,14 @@ class CallManager with WidgetsBindingObserver {
 
     // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
     if (!syncCall.isThisCall(call.id, call.serial)) {
+      print("Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject");
       call.reject();
       return;
     }
 
     // Người dùng đã click reject cuộc gọi thì reject
     if (syncCall.userRejected) {
+      print("Người dùng đã click reject cuộc gọi thì reject");
       call.reject();
       return;
     }
@@ -256,49 +261,53 @@ class CallManager with WidgetsBindingObserver {
 
     contextToShowCallScreen = context;
 
+    // Listen events
+    if (!syncCall.stringeeCall.eventStreamController.hasListener) {
+      syncCall.stringeeCall.eventStreamController.stream.listen((event) {
+        Map<dynamic, dynamic> map = event;
+        switch (map['eventType']) {
+          case StringeeCallEvents.didChangeSignalingState:
+            handleSignalingStateChangeEvent(map['body']);
+            break;
+          case StringeeCallEvents.didChangeMediaState:
+            handleMediaStateChangeEvent(map['body']);
+            break;
+          case StringeeCallEvents.didReceiveCallInfo:
+            handleReceiveCallInfoEvent(map['body']);
+            break;
+          case StringeeCallEvents.didHandleOnAnotherDevice:
+            handleHandleOnAnotherDeviceEvent(map['body']);
+            break;
+          case StringeeCallEvents.didReceiveLocalStream:
+            handleReceiveLocalStreamEvent(map['body']);
+            break;
+          case StringeeCallEvents.didReceiveRemoteStream:
+            handleReceiveRemoteStreamEvent(map['body']);
+            break;
+          case StringeeCallEvents.didChangeAudioDevice:
+            if (Platform.isAndroid) {
+              handleChangeAudioDeviceEvent(
+                  map['selectedAudioDevice'], syncCall.stringeeCall);
+            }
+            break;
+          default:
+            break;
+        }
+      });
+    }
+
+
     if (appLifecycleState != AppLifecycleState.resumed || syncCall == null || syncCall.stringeeCall == null || callScreenKey != null) {
       return;
     }
 
     callScreenKey = GlobalKey<CallScreenState>();
-    CallScreen callScreen = CallScreen(key: callScreenKey, fromUserId: syncCall.stringeeCall.from, toUserId: syncCall.stringeeCall.to);
+    print("======== SHOW CALL SCREEN ========");
+    CallScreen callScreen = CallScreen(key: callScreenKey, fromUserId: syncCall.stringeeCall.from, toUserId: syncCall.stringeeCall.to, isVideo: syncCall.stringeeCall.isVideoCall);
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => callScreen),
     );
-
-    // Listen events
-    syncCall.stringeeCall.eventStreamController.stream.listen((event) {
-      Map<dynamic, dynamic> map = event;
-      switch (map['eventType']) {
-        case StringeeCallEvents.didChangeSignalingState:
-          handleSignalingStateChangeEvent(map['body']);
-          break;
-        case StringeeCallEvents.didChangeMediaState:
-          handleMediaStateChangeEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveCallInfo:
-          handleReceiveCallInfoEvent(map['body']);
-          break;
-        case StringeeCallEvents.didHandleOnAnotherDevice:
-          handleHandleOnAnotherDeviceEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveLocalStream:
-          handleReceiveLocalStreamEvent(map['body']);
-          break;
-        case StringeeCallEvents.didReceiveRemoteStream:
-          handleReceiveRemoteStreamEvent(map['body']);
-          break;
-        case StringeeCallEvents.didChangeAudioDevice:
-          if (Platform.isAndroid) {
-            handleChangeAudioDeviceEvent(
-                map['selectedAudioDevice'], syncCall.stringeeCall);
-          }
-          break;
-        default:
-          break;
-      }
-    });
   }
 
   void showFakeCall() {
@@ -363,13 +372,16 @@ class CallManager with WidgetsBindingObserver {
 
   void handleSignalingStateChangeEvent(StringeeSignalingState state) {
     print('handleSignalingStateChangeEvent - $state');
-    CallManager.shared.syncCall.callState = state;
+    syncCall.callState = state;
     switch (state) {
       case StringeeSignalingState.calling:
+        syncCall.status = state.toString().split('.')[1];
         break;
       case StringeeSignalingState.ringing:
+        syncCall.status = state.toString().split('.')[1];
         break;
       case StringeeSignalingState.answered:
+        syncCall.status = state.toString().split('.')[1];
         break;
       case StringeeSignalingState.busy:
         syncCall.endedStringeeCall = true;
@@ -386,6 +398,7 @@ class CallManager with WidgetsBindingObserver {
 
   void handleMediaStateChangeEvent(StringeeMediaState state) {
     print('handleMediaStateChangeEvent - $state');
+    syncCall.status = state.toString().split('.')[1];
     switch (state) {
       case StringeeMediaState.connected:
         break;
@@ -439,11 +452,13 @@ class CallManager with WidgetsBindingObserver {
 
   void clearDataEndDismiss() {
     print('clearDataEndDismiss');
+    syncCall.stringeeCall.destroy();
     endCallkit();
     deleteSyncCallIfNeed();
-    syncCall.stringeeCall.destroy();
-    callScreenKey.currentState.dismiss();
-    callScreenKey = null;
+    if (callScreenKey != null) {
+      callScreenKey.currentState.dismiss();
+      callScreenKey = null;
+    }
   }
 
   /// Utils
