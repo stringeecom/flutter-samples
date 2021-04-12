@@ -50,7 +50,14 @@ class SyncCall {
   }
 
   bool ended() {
-    return endedCallkit && endedStringeeCall;
+    bool callkitEndStatus = false;
+    if (uuid.isEmpty) {
+      callkitEndStatus = true;
+    } else {
+      callkitEndStatus = endedCallkit;
+    }
+
+    return callkitEndStatus && endedStringeeCall;
   }
 
   void attachCall(StringeeCall call) {
@@ -61,7 +68,6 @@ class SyncCall {
   }
 
   void answerIfConditionPassed() {
-    print('answerIfConditionPassed');
     /*
       Voi iOS, Answer StringeeCall khi thoa man cac yeu to:
       1. Da nhan duoc su kien incomingCall (có StringeeCall object)
@@ -185,11 +191,6 @@ class SyncCall {
 
   void endCallIfNeed() {
     CallManager.shared.clearDataEndDismiss();
-    // if (CallManager.shared.callScreenKey != null) {
-    //   CallManager.shared.callScreenKey.currentState.clearDataEndDismiss();
-    // } else {
-    //   CallManager.shared.endCallkit();
-    // }
   }
 
   void updateUI() {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'sync_call.dart';
 import 'package:flutter_call_kit/flutter_call_kit.dart';
 import 'package:uuid/uuid.dart';
@@ -35,6 +37,7 @@ class CallManager with WidgetsBindingObserver {
   GlobalKey<CallScreenState> callScreenKey = null; // Tham chiếu đến CallScreen để có thể cập nhật giao diện khi cần
   AppLifecycleState appLifecycleState = AppLifecycleState.resumed;
   BuildContext contextToShowCallScreen = null;
+  Timer _incomingCallTimeoutTimer;
 
   CallManager._internal() {
     WidgetsBinding.instance.addObserver(this);
@@ -50,7 +53,7 @@ class CallManager with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     print('didChangeAppLifecycleState = $state');
     appLifecycleState = state;
-    if (state == AppLifecycleState.resumed && syncCall != null && syncCall.stringeeCall!= null) {
+    if (state == AppLifecycleState.resumed && syncCall != null && syncCall.stringeeCall != null && !syncCall.ended()) {
       showCallScreen(syncCall.stringeeCall, contextToShowCallScreen);
     }
   }
@@ -181,6 +184,7 @@ class CallManager with WidgetsBindingObserver {
       syncCall.callId = callId;
       syncCall.serial = serial;
       syncCall.uuid = uuid;
+      CallManager.shared.startTimeoutForIncomingCall();
       return;
     }
 
@@ -199,11 +203,10 @@ class CallManager with WidgetsBindingObserver {
   }
 
   void handleIncomingCallEvent(StringeeCall call, BuildContext context) {
-    print("handleIncomingCallEvent");
+    print("handleIncomingCallEvent, callId: " + call.id);
 
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
-      print("handleIncomingCallEvent, syncCall: " + syncCall.toString());
       syncCall = SyncCall();
       syncCall.attachCall(call);
       syncCall.uuid = genUUID();
@@ -262,6 +265,21 @@ class CallManager with WidgetsBindingObserver {
     contextToShowCallScreen = context;
 
     // Listen events
+    addListenerForCall();
+
+    if (appLifecycleState != AppLifecycleState.resumed || syncCall == null || syncCall.stringeeCall == null || callScreenKey != null) {
+      return;
+    }
+
+    callScreenKey = GlobalKey<CallScreenState>();
+    CallScreen callScreen = CallScreen(key: callScreenKey, fromUserId: syncCall.stringeeCall.to, toUserId: syncCall.stringeeCall.from, isVideo: syncCall.stringeeCall.isVideoCall);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => callScreen),
+    );
+  }
+
+  void addListenerForCall() {
     if (!syncCall.stringeeCall.eventStreamController.hasListener) {
       syncCall.stringeeCall.eventStreamController.stream.listen((event) {
         Map<dynamic, dynamic> map = event;
@@ -295,19 +313,6 @@ class CallManager with WidgetsBindingObserver {
         }
       });
     }
-
-
-    if (appLifecycleState != AppLifecycleState.resumed || syncCall == null || syncCall.stringeeCall == null || callScreenKey != null) {
-      return;
-    }
-
-    callScreenKey = GlobalKey<CallScreenState>();
-    print("======== SHOW CALL SCREEN ========");
-    CallScreen callScreen = CallScreen(key: callScreenKey, fromUserId: syncCall.stringeeCall.from, toUserId: syncCall.stringeeCall.to, isVideo: syncCall.stringeeCall.isVideoCall);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => callScreen),
-    );
   }
 
   void showFakeCall() {
@@ -364,7 +369,6 @@ class CallManager with WidgetsBindingObserver {
   }
 
   void endCallkit() {
-    print("endCallkit: " + syncCall.uuid);
     _callKit.endAllCalls();
   }
 
@@ -452,14 +456,47 @@ class CallManager with WidgetsBindingObserver {
 
   void clearDataEndDismiss() {
     print('clearDataEndDismiss');
-    syncCall.stringeeCall.destroy();
+    if (syncCall != null && syncCall.stringeeCall != null) {
+      syncCall.stringeeCall.destroy();
+    }
     endCallkit();
     deleteSyncCallIfNeed();
-    if (callScreenKey != null) {
+    if (callScreenKey != null && callScreenKey.currentState != null) {
       callScreenKey.currentState.dismiss();
       callScreenKey = null;
     }
   }
+
+  /*
+      Handle cho truong hop A goi B, nhung A end call rat nhanh, B nhan duoc push nhung khong nhan duoc incoming call
+      ==> Sau khi ket noi den Stringee server 3s ma chua nhan duoc cuoc goi den thi xoa Callkit Call va syncCall
+    **/
+  void startTimeoutForIncomingCall() {
+    if (_incomingCallTimeoutTimer != null || syncCall == null) {
+      return;
+    }
+
+    Timer(Duration(seconds: 3), (){
+      if (syncCall == null) {
+        return;
+      }
+
+      if (syncCall.stringeeCall == null) {
+        syncCall.endedStringeeCall = true;
+        _callKit.endAllCalls();
+        saveSyncCallToHandledCallList(syncCall);
+        syncCall = null;
+      }
+    });
+  }
+
+  void stopTimeoutForIncomingCall() {
+    if (_incomingCallTimeoutTimer != null) {
+      _incomingCallTimeoutTimer.cancel();
+      _incomingCallTimeoutTimer = null;
+    }
+  }
+
 
   /// Utils
   ///
