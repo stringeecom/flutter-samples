@@ -16,19 +16,30 @@ class SyncCall {
   int serial = 1;
   String callId = '';
   String uuid = ''; // uuid da su dung de show callkit
-  StringeeSignalingState callState =
-      StringeeSignalingState.calling; // trang thai cua StringeeCall
+  StringeeSignalingState callState = StringeeSignalingState.calling; // trang thai cua StringeeCall
 
   bool userRejected = false;
-  bool userAnswered =
-      false; // Người dùng đã click và nút answer ở màn hình incoming call của callkit hoặc của app
-  bool callAnswered =
-      false; // StringeeCall đã được answer (đã gọi hàm answer của StringeeCall object)
-  bool audioSessionActived =
-      false; // AudioSession của iOS đã được active thì khi answer call của Stringee mới kết nối thoại được
+  bool userAnswered = false; // Người dùng đã click và nút answer ở màn hình incoming call của callkit hoặc của app
+  bool callAnswered = false; // StringeeCall đã được answer (đã gọi hàm answer của StringeeCall object)
+  bool audioSessionActived = false; // AudioSession của iOS đã được active thì khi answer call của Stringee mới kết nối thoại được
 
   bool endedCallkit = false;
   bool endedStringeeCall = false;
+
+  bool isMute = false;
+  bool isSpeaker = false;
+  bool videoEnabled = false;
+  bool hasLocalStream = false;
+  bool hasRemoteStream = false;
+  bool isMirror = true; // Chi duoc su dung phia android
+  var _status = '';
+
+  set status(value) {
+    _status = value;
+    updateUI();
+  }
+
+  get status => _status;
 
   bool showedCallkit() {
     return !uuid.isEmpty;
@@ -39,17 +50,24 @@ class SyncCall {
   }
 
   bool ended() {
-    return endedCallkit && endedStringeeCall;
+    bool callkitEndStatus = false;
+    if (uuid.isEmpty) {
+      callkitEndStatus = true;
+    } else {
+      callkitEndStatus = endedCallkit;
+    }
+
+    return callkitEndStatus && endedStringeeCall;
   }
 
   void attachCall(StringeeCall call) {
     stringeeCall = call;
     serial = call.serial;
     callId = call.id;
+    videoEnabled = call.isVideoCall;
   }
 
   void answerIfConditionPassed() {
-    print('answerIfConditionPassed');
     /*
       Voi iOS, Answer StringeeCall khi thoa man cac yeu to:
       1. Da nhan duoc su kien incomingCall (có StringeeCall object)
@@ -121,52 +139,63 @@ class SyncCall {
     return status;
   }
 
-  void mute(bool mute) {
+  void mute({bool isMute}) {
     if (stringeeCall == null) {
       print("SyncCall mute failed, stringeeCall: " + stringeeCall.toString());
       return;
     }
 
-    stringeeCall.mute(mute);
-    if (CallManager.shared.callScreenKey != null) {
-      CallManager.shared.callScreenKey.currentState.changeButtonMuteState(mute);
+    if (isMute != null) {
+      this.isMute = isMute;
+    } else {
+      this.isMute = !this.isMute;
     }
+    stringeeCall.mute(this.isMute);
+    updateUI();
   }
 
-  Future<bool> setSpeakerphoneOn(bool isSpeaker) async {
+  Future<bool> setSpeakerphoneOn() async {
     if (stringeeCall == null) {
       print("SyncCall setSpeakerphoneOn failed, stringeeCall: " + stringeeCall.toString());
       return false;
     }
 
+    isSpeaker = !isSpeaker;
     await stringeeCall.setSpeakerphoneOn(isSpeaker);
+    updateUI();
     return true;
   }
 
-  void switchCamera(bool isMirror) {
+  void switchCamera() {
     if (stringeeCall == null) {
       print("SyncCall switchCamera failed, stringeeCall: " + stringeeCall.toString());
       return;
     }
 
+    isMirror = !isMirror;
+
     stringeeCall.switchCamera(isMirror);
   }
 
-  Future<bool> enableVideo(bool isVideoEnable) async {
+  Future<bool> enableVideo() async {
     if (stringeeCall == null) {
       print("SyncCall enableVideo failed, stringeeCall: " + stringeeCall.toString());
       return false;
     }
 
-    await stringeeCall.enableVideo(isVideoEnable);
+    videoEnabled = !videoEnabled;
+    await stringeeCall.enableVideo(videoEnabled);
+    updateUI();
     return true;
   }
 
   void endCallIfNeed() {
-    if (CallManager.shared.callScreenKey != null) {
-      CallManager.shared.callScreenKey.currentState.clearDataEndDismiss();
-    } else {
-      CallManager.shared.endCallkit();
+    CallManager.shared.clearDataEndDismiss();
+  }
+
+  void updateUI() {
+    if (CallManager.shared.callScreenKey != null && CallManager.shared.callScreenKey.currentState != null) {
+      CallManager.shared.callScreenKey.currentState.setState(() {});
     }
   }
 }
