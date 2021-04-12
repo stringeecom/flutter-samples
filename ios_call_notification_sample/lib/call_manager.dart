@@ -6,7 +6,6 @@ import 'package:uuid/uuid.dart';
 import 'call_screen.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'package:flutter/material.dart';
-import 'call_screen.dart';
 import 'dart:io' show Platform;
 
 class CallManager with WidgetsBindingObserver {

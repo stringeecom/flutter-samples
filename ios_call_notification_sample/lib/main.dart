@@ -3,9 +3,6 @@ import 'package:ios_call_notification_sample/call_manager.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'call_screen.dart';
 import 'package:flutter_voip_push_notification/flutter_voip_push_notification.dart';
-import 'package:flutter_call_kit/flutter_call_kit.dart';
-import 'package:uuid/uuid.dart';
-import 'sync_call.dart';
 
 var user1 = 'YOUR_USER1_ACCESS_TOKEN';
 var user2 = 'YOUR_USER2_ACCESS_TOKEN';
