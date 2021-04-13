@@ -15,10 +15,7 @@ For help getting started with Flutter, view our
 [online documentation](https://flutter.dev/docs), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-For help getting started with Stringee, view our
-[Stringee documentation for flutter](https://developer.stringee.com/docs/getting-started-flutter), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For help getting started with Stringee Flutter Plugin, view our documents:
 
-For help getting started with Stringee notification, view our
-[Stringee documentation for notification in flutter](https://developer.stringee.com/docs/push-notification/flutter), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- [Stringee documentation for flutter](https://developer.stringee.com/docs/getting-started-flutter)
+- [Stringee documentation for notification in flutter](https://developer.stringee.com/docs/push-notification/flutter)
