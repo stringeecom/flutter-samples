@@ -1,6 +1,6 @@
-# ios_call_notification_sample
+# Stringee Flutter notification sample 
 
-A new Flutter application.
+Sample for flutter notification 
 
 ## Getting Started
 
@@ -13,4 +13,12 @@ A few resources to get you started if this is your first Flutter project:
 
 For help getting started with Flutter, view our
 [online documentation](https://flutter.dev/docs), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
+For help getting started with Stringee, view our
+[Stringee documentation for flutter](https://developer.stringee.com/docs/getting-started-flutter), which offers tutorials,
+samples, guidance on mobile development, and a full API reference.
+
+For help getting started with Stringee notification, view our
+[Stringee documentation for notification in flutter](https://developer.stringee.com/docs/push-notification/flutter), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
