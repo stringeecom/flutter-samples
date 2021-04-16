@@ -156,7 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
 
-    _client.registerPush(_pushToken, isProduction: true).then((result) {
+    _client.registerPush(_pushToken, isProduction: false).then((result) {
       bool status = result['status'];
       String message = result['message'];
       print('Result for resgister push: ' + message);
