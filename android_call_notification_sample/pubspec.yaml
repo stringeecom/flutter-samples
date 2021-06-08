@@ -31,8 +31,8 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.0
   flutter_local_notifications: ^5.0.0+1
-  firebase_messaging: ^9.1.1
-  firebase_core: ^1.0.3
+  firebase_messaging: "^10.0.1"
+  firebase_core: ^1.2.1
   permission: ^0.1.7
 
 dev_dependencies:

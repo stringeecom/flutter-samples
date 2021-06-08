@@ -429,6 +429,7 @@ class _CallState extends State<Call> {
     });
     switch (state) {
       case StringeeMediaState.connected:
+        _stringeeCall.setSpeakerphoneOn(widget.isSpeaker);
         break;
       case StringeeMediaState.disconnected:
         break;
