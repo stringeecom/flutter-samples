@@ -31,7 +31,6 @@ class SyncCall {
   bool videoEnabled = false;
   bool hasLocalStream = false;
   bool hasRemoteStream = false;
-  bool isMirror = true; // Chi duoc su dung phia android
   var _status = '';
 
   set status(value) {
@@ -172,9 +171,7 @@ class SyncCall {
       return;
     }
 
-    isMirror = !isMirror;
-
-    stringeeCall.switchCamera(isMirror);
+    stringeeCall.switchCamera();
   }
 
   Future<bool> enableVideo() async {
