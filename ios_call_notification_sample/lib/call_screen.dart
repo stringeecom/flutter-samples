@@ -136,7 +136,6 @@ class CallScreenState extends State<CallScreen> {
       color: Colors.white,
       alignment: Alignment.topRight,
       isOverlay: true,
-      isMirror: CallManager.shared.syncCall.isMirror,
       margin: EdgeInsets.only(top: 100.0, right: 25.0),
       height: 200.0,
       width: 150.0,
