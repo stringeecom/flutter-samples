@@ -1,4 +1,4 @@
-name: flutter_one_to_one_call_sample
+name: ios_call_notification_sample
 description: A new Flutter application.
 
 # The following line prevents the package from being accidentally published to
@@ -23,18 +23,30 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   stringee_flutter_plugin:
     git:
       url: https://github.com/stringeecom/stringee_flutter_plugin.git
+      ref: master
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.0
+  #for ios
+  uuid: ^2.2.2
+  flutter_voip_push_notification: ^0.0.3
+  flutter_call_kit:
+    git:
+      url: https://github.com/peerwaya/flutter_call_kit.git
+      ref: master
+
+  #for android
   flutter_local_notifications: ^6.0.0
   firebase_messaging: "^10.0.1"
   firebase_core: ^1.2.1
   permission: ^0.1.7
   shared_preferences: ^2.0.6
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.0
 
 dev_dependencies:
   flutter_test:

@@ -11,7 +11,7 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'call.dart';
 
-var token = 'PUT_YOUR_TOKEN_HERE';
+var token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTSzlGVmtYaFlkQW50TEJIYllTRGhXR2hmdkhRdXFQUHgtMTYyMzgxNzI2MCIsImlzcyI6IlNLOUZWa1hoWWRBbnRMQkhiWVNEaFdHaGZ2SFF1cVBQeCIsImV4cCI6MTYyNjQwOTI2MCwidXNlcklkIjoidmlkZW9fdGVzdCJ9.AkgdjAQs2MXMBI_ZyLm_hEJVavT7cM3jcRnKGXwkjx0';
 
 StringeeClient _client = StringeeClient();
 StringeeCall _call;
@@ -41,6 +41,7 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   )
       .then((value) async {
     if (value) {
+      print("Stringee notification:" + _data.toString());
       if (_data['callStatus'] == 'started') {
         /// Create channel for notification
         const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -215,12 +216,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void handleDidConnectEvent() {
     if (Platform.isAndroid) {
       Stream<String> tokenRefreshStream = FirebaseMessaging.instance.onTokenRefresh;
+      String _token;
       tokenRefreshStream.listen((token) {
+        _token = token;
+        _client.unregisterPush(_token).then((value) => print('Unregister push ' + value['message']));
         _client.registerPush(token).then((value) => print('Register push ' + value['message']));
       });
-      _client
-          .unregisterPush('deviceToken')
-          .then((value) => print('Unregister push ' + value['message']));
       FirebaseMessaging.instance.getToken().then((token) {
         _client.registerPush(token).then((value) => print('Register push ' + value['message']));
       });
