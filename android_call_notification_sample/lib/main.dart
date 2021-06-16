@@ -7,11 +7,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission/permission.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'call.dart';
 
-var token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTSzlGVmtYaFlkQW50TEJIYllTRGhXR2hmdkhRdXFQUHgtMTYyMzgxNzI2MCIsImlzcyI6IlNLOUZWa1hoWWRBbnRMQkhiWVNEaFdHaGZ2SFF1cVBQeCIsImV4cCI6MTYyNjQwOTI2MCwidXNlcklkIjoidmlkZW9fdGVzdCJ9.AkgdjAQs2MXMBI_ZyLm_hEJVavT7cM3jcRnKGXwkjx0';
+var token = 'PUT_YOUR_TOKEN_HERE';
 
 StringeeClient _client = StringeeClient();
 StringeeCall _call;
@@ -213,17 +214,43 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   //region Handle Client Event
-  void handleDidConnectEvent() {
+  Future<void> handleDidConnectEvent() async {
     if (Platform.isAndroid) {
       Stream<String> tokenRefreshStream = FirebaseMessaging.instance.onTokenRefresh;
-      String _token;
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      bool registered = (prefs.getBool("register") == null) ? false : prefs.getBool("register");
+
+      ///kiểm tra đã register push chưa
+      if (registered != null && !registered) {
+        FirebaseMessaging.instance.getToken().then((token) {
+          _client.registerPush(token).then((value) {
+            print('Register push ' + value['message']);
+            if (value['status']) {
+              prefs.setBool("register", true);
+              prefs.setString("token", token);
+            }
+          });
+        });
+      }
+
+      ///Nhận token mới từ firebase
       tokenRefreshStream.listen((token) {
-        _token = token;
-        _client.unregisterPush(_token).then((value) => print('Unregister push ' + value['message']));
-        _client.registerPush(token).then((value) => print('Register push ' + value['message']));
-      });
-      FirebaseMessaging.instance.getToken().then((token) {
-        _client.registerPush(token).then((value) => print('Register push ' + value['message']));
+        ///Xóa token cũ
+        _client.unregisterPush(prefs.getString("token")).then((value) {
+          print('Unregister push ' + value['message']);
+          if (value['status']) {
+            ///Register với token mới
+            prefs.setBool("register", false);
+            prefs.remove("token");
+            _client.registerPush(token).then((value) {
+              print('Register push ' + value['message']);
+              if (value['status']) {
+                prefs.setBool("register", true);
+                prefs.setString("token", token);
+              }
+            });
+          }
+        });
       });
     }
 
