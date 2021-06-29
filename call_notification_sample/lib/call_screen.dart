@@ -8,6 +8,8 @@ import 'android_call_manager.dart';
 import 'ios_call_manager.dart';
 import 'sync_call.dart';
 
+import 'common.dart' as common;
+
 AndroidCallManager _androidCallManager = AndroidCallManager.shared;
 IOsCallManager _iOsCallManager = IOsCallManager.shared;
 bool isAndroid = Platform.isAndroid;
@@ -207,7 +209,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
     };
 
     if (isAndroid) {
-      _androidCallManager.setStringeeCall(new StringeeCall(), widget.isVideo);
+      _androidCallManager.setStringeeCall(new StringeeCall(common.client), widget.isVideo);
       _androidCallManager.addListenerForCall();
       _androidCallManager.stringeeCall.makeCall(parameters).then((result) {
         bool status = result['status'];
@@ -221,7 +223,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      var outgoingCall = StringeeCall();
+      var outgoingCall = StringeeCall(common.client);
       _iOsCallManager.syncCall = SyncCall();
       _iOsCallManager.syncCall.stringeeCall = outgoingCall;
       _iOsCallManager.addListenerForCall();
