@@ -11,14 +11,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'call.dart';
+import 'common.dart' as common;
 
 var token = 'PUT_YOUR_TOKEN_HERE';
 
-StringeeClient _client = StringeeClient();
 StringeeCall _call;
 StringeeCall2 _call2;
 
-FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin _localNotifications =
+    FlutterLocalNotificationsPlugin();
 bool _showIncomingCall = false;
 
 String strUserId = "";
@@ -32,9 +33,10 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   const AndroidInitializationSettings androidSettings =
       AndroidInitializationSettings('@drawable/ic_noti');
   final IOSInitializationSettings iOSSettings = IOSInitializationSettings();
-  final MacOSInitializationSettings macOSSettings = MacOSInitializationSettings();
-  final InitializationSettings initializationSettings =
-      InitializationSettings(android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
+  final MacOSInitializationSettings macOSSettings =
+      MacOSInitializationSettings();
+  final InitializationSettings initializationSettings = InitializationSettings(
+      android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
   await _localNotifications
       .initialize(
     initializationSettings,
@@ -112,8 +114,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       isAppInBackground = true;
     }
 
-    if (state == AppLifecycleState.resumed && _client != null) {
-      if (_client.hasConnected && _showIncomingCall && Platform.isAndroid) {
+    if (state == AppLifecycleState.resumed && common.client != null) {
+      if (common.client.hasConnected &&
+          _showIncomingCall &&
+          Platform.isAndroid) {
         showCallScreen(_call, _call2);
       }
     }
@@ -136,7 +140,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
 
     /// Lắng nghe sự kiện của StringeeClient(kết nối, cuộc gọi đến...)
-    _client.eventStreamController.stream.listen((event) {
+    common.client.eventStreamController.stream.listen((event) {
       Map<dynamic, dynamic> map = event;
       switch (map['eventType']) {
         case StringeeClientEvents.didConnect:
@@ -146,7 +150,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           handleDiddisconnectEvent();
           break;
         case StringeeClientEvents.didFailWithError:
-          handleDidFailWithErrorEvent(map['body']['code'], map['body']['message']);
+          handleDidFailWithErrorEvent(
+              map['body']['code'], map['body']['message']);
           break;
         case StringeeClientEvents.requestAccessToken:
           handleRequestAccessTokenEvent();
@@ -164,7 +169,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           break;
         case StringeeClientEvents.didReceiveObjectChange:
           StringeeObjectChange objectChange = map['body'];
-          print(objectChange.objectType.toString() + '\t' + objectChange.type.toString());
+          print(objectChange.objectType.toString() +
+              '\t' +
+              objectChange.type.toString());
           print(objectChange.objects.toString());
           break;
         default:
@@ -173,7 +180,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     });
 
     /// Connect
-    _client.connect(token);
+    common.client.connect(token);
   }
 
   requestPermissions() async {
@@ -216,14 +223,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   //region Handle Client Event
   Future<void> handleDidConnectEvent() async {
     if (Platform.isAndroid) {
-      Stream<String> tokenRefreshStream = FirebaseMessaging.instance.onTokenRefresh;
+      Stream<String> tokenRefreshStream =
+          FirebaseMessaging.instance.onTokenRefresh;
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool registered = (prefs.getBool("register") == null) ? false : prefs.getBool("register");
+      bool registered = (prefs.getBool("register") == null)
+          ? false
+          : prefs.getBool("register");
 
       ///kiểm tra đã register push chưa
       if (registered != null && !registered) {
         FirebaseMessaging.instance.getToken().then((token) {
-          _client.registerPush(token).then((value) {
+          common.client.registerPush(token).then((value) {
             print('Register push ' + value['message']);
             if (value['status']) {
               prefs.setBool("register", true);
@@ -236,13 +246,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       ///Nhận token mới từ firebase
       tokenRefreshStream.listen((token) {
         ///Xóa token cũ
-        _client.unregisterPush(prefs.getString("token")).then((value) {
+        common.client.unregisterPush(prefs.getString("token")).then((value) {
           print('Unregister push ' + value['message']);
           if (value['status']) {
             ///Register với token mới
             prefs.setBool("register", false);
             prefs.remove("token");
-            _client.registerPush(token).then((value) {
+            common.client.registerPush(token).then((value) {
               print('Register push ' + value['message']);
               if (value['status']) {
                 prefs.setBool("register", true);
@@ -255,7 +265,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }
 
     setState(() {
-      myUserId = _client.userId;
+      myUserId = common.client.userId;
     });
   }
 
@@ -304,7 +314,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           fromUserId: call != null ? call.from : call2.from,
           toUserId: call != null ? call.to : call2.to,
           isVideoCall: call != null ? call.isVideoCall : call2.isVideoCall,
-          callType: call != null ? StringeeObjectEventType.call : StringeeObjectEventType.call2,
+          callType: call != null
+              ? StringeeObjectEventType.call
+              : StringeeObjectEventType.call2,
           showIncomingUi: true,
           incomingCall2: call != null ? null : call2,
           incomingCall: call != null ? call : null,
@@ -433,13 +445,13 @@ class _MyFormState extends State<MyForm> {
   }
 
   void _CallTapped(bool isVideoCall, StringeeObjectEventType callType) {
-    if (strUserId.isEmpty || !_client.hasConnected) return;
+    if (strUserId.isEmpty || !common.client.hasConnected) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
           builder: (context) => Call(
-              fromUserId: _client.userId,
+              fromUserId: common.client.userId,
               toUserId: strUserId,
               isVideoCall: isVideoCall,
               callType: callType,

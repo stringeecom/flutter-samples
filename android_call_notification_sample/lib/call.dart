@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
+import 'common.dart' as common;
+
 StringeeCall _stringeeCall;
 StringeeCall2 _stringeeCall2;
 
@@ -190,7 +192,7 @@ class _CallState extends State<Call> {
     _stringeeCall = widget.incomingCall;
 
     if (!widget.showIncomingUi) {
-      _stringeeCall = StringeeCall();
+      _stringeeCall = StringeeCall(common.client);
     }
 
     // Listen events
@@ -218,7 +220,8 @@ class _CallState extends State<Call> {
           break;
         case StringeeCallEvents.didChangeAudioDevice:
           if (Platform.isAndroid) {
-            handleChangeAudioDeviceEvent(map['selectedAudioDevice'], _stringeeCall, null);
+            handleChangeAudioDeviceEvent(
+                map['selectedAudioDevice'], _stringeeCall, null);
           }
           break;
         default:
@@ -260,7 +263,7 @@ class _CallState extends State<Call> {
     _stringeeCall2 = widget.incomingCall2;
 
     if (!widget.showIncomingUi) {
-      _stringeeCall2 = StringeeCall2();
+      _stringeeCall2 = StringeeCall2(common.client);
     }
 
     // Listen events
@@ -287,7 +290,8 @@ class _CallState extends State<Call> {
           break;
         case StringeeCall2Events.didChangeAudioDevice:
           if (Platform.isAndroid) {
-            handleChangeAudioDeviceEvent(map['selectedAudioDevice'], null, _stringeeCall2);
+            handleChangeAudioDeviceEvent(
+                map['selectedAudioDevice'], null, _stringeeCall2);
           }
           break;
         default:
