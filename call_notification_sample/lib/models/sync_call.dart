@@ -7,7 +7,7 @@
     Đối tượng này sẽ wrap 1 StringeeCall object và lưu 1 số trạng thái của cuộc gọi
 **/
 
-import 'package:ios_call_notification_sample/ios_call_manager.dart';
+import 'package:ios_call_notification_sample/managers/ios_call_manager.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 class SyncCall {
@@ -66,6 +66,18 @@ class SyncCall {
     videoEnabled = call.isVideoCall;
   }
 
+  void answerCallkitCall() {
+    /*
+    * Hàm này thực hiện answer cuộc gọi đã show sử dụng CallKeep
+    * Sau khi thành công sẽ nhận được sự kiện CallKeepPerformAnswerCallAction của CallKeep
+    * **/
+    if (uuid == null || uuid.isEmpty) {
+      return;
+    }
+
+    IOSCallManager.shared.callKeep.answerIncomingCall(uuid);
+  }
+
   void answerIfConditionPassed() {
     /*
       Voi iOS, Answer StringeeCall khi thoa man cac yeu to:
@@ -91,8 +103,8 @@ class SyncCall {
     }
 
     // Cập nhật giao diện từ incomingCall ==> calling
-    if (IOsCallManager.shared.callScreenKey != null && IOsCallManager.shared.callScreenKey.currentState != null) {
-      IOsCallManager.shared.callScreenKey.currentState.changeToCallingUI();
+    if (IOSCallManager.shared.callScreenKey != null && IOSCallManager.shared.callScreenKey.currentState != null) {
+      IOSCallManager.shared.callScreenKey.currentState.changeToCallingUI();
     }
 
     stringeeCall.answer().then((result) {
@@ -187,12 +199,12 @@ class SyncCall {
   }
 
   void endCallIfNeed() {
-    IOsCallManager.shared.clearDataEndDismiss();
+    IOSCallManager.shared.clearDataEndDismiss();
   }
 
   void updateUI() {
-    if (IOsCallManager.shared.callScreenKey != null && IOsCallManager.shared.callScreenKey.currentState != null) {
-      IOsCallManager.shared.callScreenKey.currentState.setState(() {});
+    if (IOSCallManager.shared.callScreenKey != null && IOSCallManager.shared.callScreenKey.currentState != null) {
+      IOSCallManager.shared.callScreenKey.currentState.setState(() {});
     }
   }
 }

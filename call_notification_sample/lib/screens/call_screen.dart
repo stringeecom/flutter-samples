@@ -1,17 +1,17 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:ios_call_notification_sample/call_info.dart';
+import 'package:ios_call_notification_sample/models/call_info.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'android_call_manager.dart';
-import 'ios_call_manager.dart';
-import 'sync_call.dart';
+import '../managers/android_call_manager.dart';
+import '../managers/ios_call_manager.dart';
+import '../models/sync_call.dart';
 
-import 'common.dart' as common;
+import '../managers/instance_manager.dart' as InstanceManager;
 
 AndroidCallManager _androidCallManager = AndroidCallManager.shared;
-IOsCallManager _iOsCallManager = IOsCallManager.shared;
+IOSCallManager _iOSCallManager = IOSCallManager.shared;
 bool isAndroid = Platform.isAndroid;
 bool _isMute = false;
 bool _isSpeakerOn;
@@ -57,12 +57,12 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         makeOutgoingCall();
       }
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         // Goi di
         makeOutgoingCall();
       } else {
         // Goi den
-        widget.showIncomingUI = !_iOsCallManager.syncCall.userAnswered;
+        widget.showIncomingUI = !_iOSCallManager.syncCall.userAnswered;
       }
     }
   }
@@ -92,7 +92,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
             child: new Text(
               isAndroid
                   ? _status
-                  : '${_iOsCallManager.syncCall != null ? _iOsCallManager.syncCall.status : ""}',
+                  : '${_iOSCallManager.syncCall != null ? _iOSCallManager.syncCall.status : ""}',
               style: new TextStyle(
                 color: Colors.white,
                 fontSize: 20.0,
@@ -156,11 +156,11 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
                 ]),
     );
 
-    Widget localView = (isAndroid ? _hasLocalStream : _iOsCallManager.syncCall.hasLocalStream)
+    Widget localView = (isAndroid ? _hasLocalStream : _iOSCallManager.syncCall.hasLocalStream)
         ? new StringeeVideoView(
             isAndroid
                 ? _androidCallManager.stringeeCall.id
-                : _iOsCallManager.syncCall.stringeeCall.id,
+                : _iOSCallManager.syncCall.stringeeCall.id,
             true,
             color: Colors.white,
             alignment: Alignment.topRight,
@@ -172,11 +172,11 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
           )
         : Placeholder();
 
-    Widget remoteView = (isAndroid ? _hasRemoteStream : _iOsCallManager.syncCall.hasRemoteStream)
+    Widget remoteView = (isAndroid ? _hasRemoteStream : _iOSCallManager.syncCall.hasRemoteStream)
         ? new StringeeVideoView(
             isAndroid
                 ? _androidCallManager.stringeeCall.id
-                : _iOsCallManager.syncCall.stringeeCall.id,
+                : _iOSCallManager.syncCall.stringeeCall.id,
             false,
             color: Colors.blue,
             isOverlay: false,
@@ -209,7 +209,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
     };
 
     if (isAndroid) {
-      _androidCallManager.setStringeeCall(new StringeeCall(common.client), widget.isVideo);
+      _androidCallManager.setStringeeCall(new StringeeCall(InstanceManager.client), widget.isVideo);
       _androidCallManager.addListenerForCall();
       _androidCallManager.stringeeCall.makeCall(parameters).then((result) {
         bool status = result['status'];
@@ -223,10 +223,10 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      var outgoingCall = StringeeCall(common.client);
-      _iOsCallManager.syncCall = SyncCall();
-      _iOsCallManager.syncCall.stringeeCall = outgoingCall;
-      _iOsCallManager.addListenerForCall();
+      var outgoingCall = StringeeCall(InstanceManager.client);
+      _iOSCallManager.syncCall = SyncCall();
+      _iOSCallManager.syncCall.stringeeCall = outgoingCall;
+      _iOSCallManager.addListenerForCall();
 
       outgoingCall.makeCall(parameters).then((result) {
         bool status = result['status'];
@@ -235,10 +235,10 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         print(
             'MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
 
-        _iOsCallManager.syncCall.attachCall(outgoingCall);
+        _iOSCallManager.syncCall.attachCall(outgoingCall);
 
         if (!status) {
-          _iOsCallManager.clearDataEndDismiss();
+          _iOSCallManager.clearDataEndDismiss();
         }
       });
     }
@@ -253,11 +253,11 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.hangup();
+      _iOSCallManager.syncCall.hangup();
     }
   }
 
@@ -274,16 +274,11 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      // Tạm thời chưa xử lý button này vì các thư viện Callkit bên flutter chưa hỗ trở API để answer Callkit Call
-      // Người dùng vẫn có thể click answer từ màn hình callkit bình thường
-      return;
-
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.userAnswered = true;
-      _iOsCallManager.syncCall.answerIfConditionPassed();
+      _iOSCallManager.syncCall.answerCallkitCall();
     }
   }
 
@@ -296,13 +291,13 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
-      _iOsCallManager.syncCall.userRejected = true;
-      _iOsCallManager.syncCall.reject().then((status) {
+      _iOSCallManager.syncCall.userRejected = true;
+      _iOSCallManager.syncCall.reject().then((status) {
         if (Platform.isAndroid) {
-          _iOsCallManager.clearDataEndDismiss();
+          _iOSCallManager.clearDataEndDismiss();
         }
       });
     }
@@ -383,11 +378,11 @@ class _ButtonSwitchCameraState extends State<ButtonSwitchCamera> {
     if (isAndroid) {
       _androidCallManager.switchCamera();
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.switchCamera();
+      _iOSCallManager.syncCall.switchCamera();
     }
   }
 
@@ -430,11 +425,11 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
     if (isAndroid) {
       _androidCallManager.setSpeakerphoneOn();
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.setSpeakerphoneOn();
+      _iOSCallManager.syncCall.setSpeakerphoneOn();
     }
   }
 
@@ -449,7 +444,7 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
     return new GestureDetector(
       onTap: _toggleSpeaker,
       child: Image.asset(
-        (isAndroid ? _isSpeakerOn : _iOsCallManager.syncCall.isSpeaker)
+        (isAndroid ? _isSpeakerOn : _iOSCallManager.syncCall.isSpeaker)
             ? 'images/ic_speaker_on.png'
             : 'images/ic_speaker_off.png',
         height: 75.0,
@@ -473,11 +468,11 @@ class _ButtonMicroState extends State<ButtonMicro> {
     if (isAndroid) {
       _androidCallManager.mute();
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.mute();
+      _iOSCallManager.syncCall.mute();
     }
   }
 
@@ -492,7 +487,7 @@ class _ButtonMicroState extends State<ButtonMicro> {
     return new GestureDetector(
       onTap: _toggleMicro,
       child: Image.asset(
-        (isAndroid ? _isMute : _iOsCallManager.syncCall.isMute)
+        (isAndroid ? _isMute : _iOSCallManager.syncCall.isMute)
             ? 'images/ic_mute.png'
             : 'images/ic_mic.png',
         height: 75.0,
@@ -516,11 +511,11 @@ class _ButtonVideoState extends State<ButtonVideo> {
     if (isAndroid) {
       _androidCallManager.enableVideo();
     } else {
-      if (_iOsCallManager.syncCall == null) {
+      if (_iOSCallManager.syncCall == null) {
         return;
       }
 
-      _iOsCallManager.syncCall.enableVideo();
+      _iOSCallManager.syncCall.enableVideo();
     }
   }
 
@@ -535,7 +530,7 @@ class _ButtonVideoState extends State<ButtonVideo> {
     return new GestureDetector(
       onTap: widget.isVideo ? _toggleVideo : null,
       child: Image.asset(
-        (isAndroid ? _isVideoEnable : _iOsCallManager.syncCall.videoEnabled)
+        (isAndroid ? _isVideoEnable : _iOSCallManager.syncCall.videoEnabled)
             ? 'images/ic_video.png'
             : 'images/ic_video_off.png',
         height: 75.0,
