@@ -5,17 +5,16 @@ import 'package:ios_call_notification_sample/models/call_info.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../managers/android_call_manager.dart';
+import '../managers/instance_manager.dart' as InstanceManager;
 import '../managers/ios_call_manager.dart';
 import '../models/sync_call.dart';
-
-import '../managers/instance_manager.dart' as InstanceManager;
 
 AndroidCallManager _androidCallManager = AndroidCallManager.shared;
 IOSCallManager _iOSCallManager = IOSCallManager.shared;
 bool isAndroid = Platform.isAndroid;
 bool _isMute = false;
-bool _isSpeakerOn;
-bool _isVideoEnable;
+bool _isSpeakerOn = false;
+bool _isVideoEnable = false;
 bool _hasLocalStream = false;
 bool _hasRemoteStream = false;
 String _status = '';
@@ -38,7 +37,6 @@ class CallScreen extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return CallScreenState();
   }
 }
@@ -46,7 +44,6 @@ class CallScreen extends StatefulWidget {
 class CallScreenState extends State<CallScreen> implements CallInfo {
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
     if (isAndroid) {
@@ -71,7 +68,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   @override
   Widget build(BuildContext context) {
-    Widget NameCalling = new Container(
+    Widget nameCalling = new Container(
       alignment: Alignment.topCenter,
       padding: EdgeInsets.only(top: 120.0),
       child: new Column(
@@ -105,7 +102,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
       ),
     );
 
-    Widget BottomContainer = new Container(
+    Widget bottomContainer = new Container(
       padding: EdgeInsets.only(bottom: 30.0),
       alignment: Alignment.bottomCenter,
       child: new Column(
@@ -158,26 +155,29 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
                 ]),
     );
 
-    Widget localView = (isAndroid ? _hasLocalStream : _iOSCallManager.syncCall.hasLocalStream)
-        ? new StringeeVideoView(
-            isAndroid
-                ? _androidCallManager.stringeeCall.id
-                : _iOSCallManager.syncCall.callId,
-            true,
-            color: Colors.white,
-            alignment: Alignment.topRight,
-            isOverlay: true,
-            margin: EdgeInsets.only(top: 100.0, right: 25.0),
-            height: 200.0,
-            width: 150.0,
-            scalingType: ScalingType.fill,
-          )
-        : Placeholder();
+    Widget localView =
+        (isAndroid ? _hasLocalStream : _iOSCallManager.syncCall.hasLocalStream)
+            ? new StringeeVideoView(
+                isAndroid
+                    ? _androidCallManager.callId
+                    : _iOSCallManager.syncCall.callId,
+                true,
+                color: Colors.white,
+                alignment: Alignment.topRight,
+                isOverlay: true,
+                margin: EdgeInsets.only(top: 100.0, right: 25.0),
+                height: 200.0,
+                width: 150.0,
+                scalingType: ScalingType.fill,
+              )
+            : Placeholder();
 
-    Widget remoteView = (isAndroid ? _hasRemoteStream : _iOSCallManager.syncCall.hasRemoteStream)
+    Widget remoteView = (isAndroid
+            ? _hasRemoteStream
+            : _iOSCallManager.syncCall.hasRemoteStream)
         ? new StringeeVideoView(
             isAndroid
-                ? _androidCallManager.stringeeCall.id
+                ? _androidCallManager.callId
                 : _iOSCallManager.syncCall.callId,
             false,
             color: Colors.blue,
@@ -193,8 +193,8 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         children: <Widget>[
           remoteView,
           localView,
-          NameCalling,
-          BottomContainer,
+          nameCalling,
+          bottomContainer,
           widget.isVideo ? ButtonSwitchCamera() : Placeholder(),
         ],
       ),
@@ -211,19 +211,15 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
     };
 
     if (isAndroid) {
-      _androidCallManager.setStringeeCall(new StringeeCall(InstanceManager.client), widget.isVideo);
+      if (widget.useCall2) {
+        _androidCallManager.setStringeeCall2(
+            new StringeeCall2(InstanceManager.client), widget.isVideo);
+      } else {
+        _androidCallManager.setStringeeCall(
+            new StringeeCall(InstanceManager.client), widget.isVideo);
+      }
       _androidCallManager.addListenerForCall();
-      _androidCallManager.stringeeCall.makeCall(parameters).then((result) {
-        bool status = result['status'];
-        int code = result['code'];
-        String message = result['message'];
-        print(
-            'MakeCall CallBack --- $status - $code - $message - ${_androidCallManager.stringeeCall.id} - ${_androidCallManager.stringeeCall.from} - ${_androidCallManager.stringeeCall.to}');
-
-        if (!status) {
-          _androidCallManager.clearDataEndDismiss();
-        }
-      });
+      _androidCallManager.makeCall(parameters);
     } else {
       _iOSCallManager.syncCall = SyncCall();
       var outgoingCall;
@@ -240,7 +236,8 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         bool status = result['status'];
         int code = result['code'];
         String message = result['message'];
-        print('MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
+        print(
+            'MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
 
         if (widget.useCall2) {
           _iOSCallManager.syncCall.attachCall2(outgoingCall);
@@ -257,12 +254,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   void endCallTapped() {
     if (isAndroid) {
-      _androidCallManager.stringeeCall.hangup().then((result) {
-        print('_endCallTapped -- ${result['message']}');
-        if (result['status']) {
-          _androidCallManager.clearDataEndDismiss();
-        }
-      });
+      _androidCallManager.hangup();
     } else {
       if (_iOSCallManager.syncCall == null) {
         return;
@@ -274,7 +266,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   void acceptCallTapped() {
     if (isAndroid) {
-      _androidCallManager.stringeeCall.answer().then((result) {
+      _androidCallManager.answer().then((result) {
         print('_acceptCallTapped -- ${result['message']}');
         if (result['status']) {
           setState(() {
@@ -295,12 +287,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   void rejectCallTapped() {
     if (isAndroid) {
-      _androidCallManager.stringeeCall.reject().then((result) {
-        print('_rejectCallTapped -- ${result['message']}');
-        if (result['status']) {
-          _androidCallManager.clearDataEndDismiss();
-        }
-      });
+      _androidCallManager.reject();
     } else {
       if (_iOSCallManager.syncCall == null) {
         return;
@@ -321,6 +308,12 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
   }
 
   void dismiss() {
+    _isMute = false;
+    _isSpeakerOn = false;
+    _isVideoEnable = false;
+    _hasLocalStream = false;
+    _hasRemoteStream = false;
+    _status = '';
     if (isAndroid) {
       Navigator.pop(context);
     } else {

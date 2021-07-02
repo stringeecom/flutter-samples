@@ -11,11 +11,10 @@ import 'package:permission/permission.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'screens/call_screen.dart';
 import 'managers/instance_manager.dart' as InstanceManager;
+import 'screens/call_screen.dart';
 
-var user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyLTE2MjQ5NDkyMzYiLCJpc3MiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyIiwiZXhwIjoxNjI3NTQxMjM2LCJ1c2VySWQiOiJ1c2VyMSJ9.EEovOrSqsy5v026Ejc-jSu-2kFB_qSKmEJxTt3ch32E';
-var user2 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyLTE2MjQ5NDkyNTIiLCJpc3MiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyIiwiZXhwIjoxNjI3NTQxMjUyLCJ1c2VySWQiOiJ1c2VyMiJ9.nZQkYar8IiIYZlUvLxeOkw8rWRbjUtPkDZm68xzaAQE';
+var user1 = 'PUT_YOUR_TOKEN_HERE';
 
 String toUserId = "";
 bool isAndroid = Platform.isAndroid;
@@ -32,9 +31,10 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   const AndroidInitializationSettings androidSettings =
       AndroidInitializationSettings('@drawable/ic_noti');
   final IOSInitializationSettings iOSSettings = IOSInitializationSettings();
-  final MacOSInitializationSettings macOSSettings = MacOSInitializationSettings();
-  final InitializationSettings initializationSettings =
-      InitializationSettings(android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
+  final MacOSInitializationSettings macOSSettings =
+      MacOSInitializationSettings();
+  final InitializationSettings initializationSettings = InitializationSettings(
+      android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
   await InstanceManager.localNotifications
       .initialize(
     initializationSettings,
@@ -111,8 +111,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String myUserId = "";
 
   @override
-  Future<void> initState() {
-    // TODO: implement initState
+  void initState() {
     super.initState();
 
     if (isAndroid) {
@@ -136,7 +135,8 @@ class _MyHomePageState extends State<MyHomePage> {
           handleDiddisconnectEvent();
           break;
         case StringeeClientEvents.didFailWithError:
-          handleDidFailWithErrorEvent(map['body']['code'], map['body']['message']);
+          handleDidFailWithErrorEvent(
+              map['body']['code'], map['body']['message']);
           break;
         case StringeeClientEvents.requestAccessToken:
           handleRequestAccessTokenEvent();
@@ -155,14 +155,16 @@ class _MyHomePageState extends State<MyHomePage> {
         case StringeeClientEvents.incomingCall2:
           StringeeCall2 call = map['body'];
           if (isAndroid) {
-
+            _androidCallManager.handleIncomingCall2Event(call, context);
           } else {
             _iOSCallManager.handleIncomingCall2Event(call, context);
           }
           break;
         case StringeeClientEvents.didReceiveObjectChange:
           StringeeObjectChange objectChange = map['body'];
-          print(objectChange.objectType.toString() + '\t' + objectChange.type.toString());
+          print(objectChange.objectType.toString() +
+              '\t' +
+              objectChange.type.toString());
           print(objectChange.objects.toString());
           break;
         default:
@@ -188,9 +190,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> registerPushWithStringeeServer() async {
     if (isAndroid) {
-      Stream<String> tokenRefreshStream = FirebaseMessaging.instance.onTokenRefresh;
+      Stream<String> tokenRefreshStream =
+          FirebaseMessaging.instance.onTokenRefresh;
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool registered = (prefs.getBool("register") == null) ? false : prefs.getBool("register");
+      bool registered = (prefs.getBool("register") == null)
+          ? false
+          : prefs.getBool("register");
 
       ///kiểm tra đã register push chưa
       if (registered != null && !registered) {
@@ -208,7 +213,9 @@ class _MyHomePageState extends State<MyHomePage> {
       ///Nhận token mới từ firebase
       tokenRefreshStream.listen((token) {
         ///Xóa token cũ
-        InstanceManager.client.unregisterPush(prefs.getString("token")).then((value) {
+        InstanceManager.client
+            .unregisterPush(prefs.getString("token"))
+            .then((value) {
           print('Unregister push ' + value['message']);
           if (value['status']) {
             ///Register với token mới
@@ -290,7 +297,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
-  
 }
 
 class ActionForm extends StatefulWidget {
@@ -301,7 +307,6 @@ class ActionForm extends StatefulWidget {
 class _ActionFormState extends State<ActionForm> {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new Form(
 //      key: _formKey,
       child: new Column(
@@ -330,9 +335,7 @@ class _ActionFormState extends State<ActionForm> {
                   new Container(
                     height: 40.0,
                     width: 150.0,
-                    child: new RaisedButton(
-                      color: Colors.grey[300],
-                      textColor: Colors.black,
+                    child: new ElevatedButton(
                       onPressed: () {
                         callTapped(false, false);
                       },
@@ -342,9 +345,7 @@ class _ActionFormState extends State<ActionForm> {
                   new Container(
                     height: 40.0,
                     width: 150.0,
-                    child: new RaisedButton(
-                      color: Colors.grey[300],
-                      textColor: Colors.black,
+                    child: new ElevatedButton(
                       onPressed: () {
                         callTapped(true, false);
                       },
@@ -362,9 +363,7 @@ class _ActionFormState extends State<ActionForm> {
                   new Container(
                     height: 40.0,
                     width: 150.0,
-                    child: new RaisedButton(
-                      color: Colors.grey[300],
-                      textColor: Colors.black,
+                    child: new ElevatedButton(
                       onPressed: () {
                         callTapped(false, true);
                       },
@@ -374,9 +373,7 @@ class _ActionFormState extends State<ActionForm> {
                   new Container(
                     height: 40.0,
                     width: 150.0,
-                    child: new RaisedButton(
-                      color: Colors.grey[300],
-                      textColor: Colors.black,
+                    child: new ElevatedButton(
                       onPressed: () {
                         callTapped(true, true);
                       },
