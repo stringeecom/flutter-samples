@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:ios_call_notification_sample/call_info.dart';
+import 'package:ios_call_notification_sample/models/call_info.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'call_screen.dart';
-import 'common.dart' as common;
+import 'package:ios_call_notification_sample/screens/call_screen.dart';
+import 'instance_manager.dart' as InstanceManager;
 
 class AndroidCallManager with WidgetsBindingObserver {
   static AndroidCallManager _instance;
@@ -64,14 +64,14 @@ class AndroidCallManager with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     print('didChangeAppLifecycleState = $state');
     if (state == AppLifecycleState.resumed) {
-      common.localNotifications.cancel(0);
+      InstanceManager.localNotifications.cancel(0);
       _isAppInBackground = false;
     } else if (state == AppLifecycleState.inactive) {
       _isAppInBackground = true;
     }
 
-    if (state == AppLifecycleState.resumed && common.client != null) {
-      if (common.client.hasConnected && _showIncomingCall) {
+    if (state == AppLifecycleState.resumed && InstanceManager.client != null) {
+      if (InstanceManager.client.hasConnected && _showIncomingCall) {
         showCallScreen();
       }
     }

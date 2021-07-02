@@ -5,15 +5,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_voip_push_notification/flutter_voip_push_notification.dart';
-import 'package:ios_call_notification_sample/android_call_manager.dart';
-import 'package:ios_call_notification_sample/ios_call_manager.dart';
+import 'package:ios_call_notification_sample/managers/android_call_manager.dart';
+import 'package:ios_call_notification_sample/managers/ios_call_manager.dart';
 import 'package:permission/permission.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'call_screen.dart';
-import 'common.dart' as common;
+import 'screens/call_screen.dart';
+import 'managers/instance_manager.dart' as InstanceManager;
 
 var user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyLTE2MjQ5NDkyMzYiLCJpc3MiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyIiwiZXhwIjoxNjI3NTQxMjM2LCJ1c2VySWQiOiJ1c2VyMSJ9.EEovOrSqsy5v026Ejc-jSu-2kFB_qSKmEJxTt3ch32E';
 var user2 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyLTE2MjQ5NDkyNTIiLCJpc3MiOiJTS0xIb2NCdDl6Qk5qc1pLeThZaUVkSzRsU3NBZjhCSHpyIiwiZXhwIjoxNjI3NTQxMjUyLCJ1c2VySWQiOiJ1c2VyMiJ9.nZQkYar8IiIYZlUvLxeOkw8rWRbjUtPkDZm68xzaAQE';
@@ -21,9 +20,9 @@ var user2 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTY
 String toUserId = "";
 bool isAndroid = Platform.isAndroid;
 AndroidCallManager _androidCallManager = AndroidCallManager.shared;
-IOsCallManager _iOsCallManager = IOsCallManager.shared;
+IOSCallManager _iOSCallManager = IOSCallManager.shared;
 
-///Nhận và hiện notification khi app ở dưới background hoặc đã bị kill ở android
+/// Nhận và hiện notification khi app ở dưới background hoặc đã bị kill ở android
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   print("Handling a background message: ${remoteMessage.data}");
 
@@ -36,7 +35,7 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   final MacOSInitializationSettings macOSSettings = MacOSInitializationSettings();
   final InitializationSettings initializationSettings =
       InitializationSettings(android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
-  await common.localNotifications
+  await InstanceManager.localNotifications
       .initialize(
     initializationSettings,
     onSelectNotification: null,
@@ -61,14 +60,14 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
             NotificationDetails(android: androidPlatformChannelSpecifics);
 
         /// Show notification
-        await common.localNotifications.show(
+        await InstanceManager.localNotifications.show(
           0,
           'Incoming Call',
           'from ' + _data['from']['alias'],
           platformChannelSpecifics,
         );
       } else if (_data['callStatus'] == 'ended') {
-        common.localNotifications.cancel(0);
+        InstanceManager.localNotifications.cancel(0);
       }
     }
   });
@@ -110,9 +109,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String myUserId = "";
-  String _pushToken = "";
-  bool registeredPushWithStringeeServer = false;
-  FlutterVoipPushNotification _voipPush = FlutterVoipPushNotification();
 
   @override
   Future<void> initState() {
@@ -125,15 +121,12 @@ class _MyHomePageState extends State<MyHomePage> {
       ///cấp quyền truy cập với android
       requestPermissions();
     } else {
-      /// Cấu hình thư viện để nhận voip notification
-      configureVoipNotificationLibrary();
-
-      /// Cấu hình thư viện để xử dụng Callkit show giao diện call native của iOS
-      _iOsCallManager.configureCallkitLibrary();
+      /// Cấu hình thư viện để nhận push notification và sử dụng Callkit để show giao diện call native của iOS
+      _iOSCallManager.configureCallKeep();
     }
 
     /// Lắng nghe sự kiện của StringeeClient(kết nối, cuộc gọi đến...)
-    common.client.eventStreamController.stream.listen((event) {
+    InstanceManager.client.eventStreamController.stream.listen((event) {
       Map<dynamic, dynamic> map = event;
       switch (map['eventType']) {
         case StringeeClientEvents.didConnect:
@@ -156,10 +149,16 @@ class _MyHomePageState extends State<MyHomePage> {
           if (isAndroid) {
             _androidCallManager.handleIncomingCallEvent(call, context);
           } else {
-            _iOsCallManager.handleIncomingCallEvent(call, context);
+            _iOSCallManager.handleIncomingCallEvent(call, context);
           }
           break;
         case StringeeClientEvents.incomingCall2:
+          StringeeCall2 call = map['body'];
+          if (isAndroid) {
+
+          } else {
+            _iOSCallManager.handleIncomingCall2Event(call, context);
+          }
           break;
         case StringeeClientEvents.didReceiveObjectChange:
           StringeeObjectChange objectChange = map['body'];
@@ -171,7 +170,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    common.client.connect(user1);
+    InstanceManager.client.connect(user2);
   }
 
   requestPermissions() async {
@@ -196,7 +195,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ///kiểm tra đã register push chưa
       if (registered != null && !registered) {
         FirebaseMessaging.instance.getToken().then((token) {
-          common.client.registerPush(token).then((value) {
+          InstanceManager.client.registerPush(token).then((value) {
             print('Register push ' + value['message']);
             if (value['status']) {
               prefs.setBool("register", true);
@@ -209,13 +208,13 @@ class _MyHomePageState extends State<MyHomePage> {
       ///Nhận token mới từ firebase
       tokenRefreshStream.listen((token) {
         ///Xóa token cũ
-        common.client.unregisterPush(prefs.getString("token")).then((value) {
+        InstanceManager.client.unregisterPush(prefs.getString("token")).then((value) {
           print('Unregister push ' + value['message']);
           if (value['status']) {
             ///Register với token mới
             prefs.setBool("register", false);
             prefs.remove("token");
-            common.client.registerPush(token).then((value) {
+            InstanceManager.client.registerPush(token).then((value) {
               print('Register push ' + value['message']);
               if (value['status']) {
                 prefs.setBool("register", true);
@@ -226,25 +225,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       });
     } else {
-      if (registeredPushWithStringeeServer) {
-        return;
-      }
-
-      if (_pushToken == null || _pushToken == '') {
-        print('Push token khong hop le');
-        return;
-      }
-
-      common.client.registerPush(_pushToken, isProduction: false).then((result) {
-        bool status = result['status'];
-        String message = result['message'];
-        print('Result for resgister push: ' + message);
-        if (status) {
-          setState(() {
-            registeredPushWithStringeeServer = true;
-          });
-        }
-      });
+      _iOSCallManager.registerPushWithStringeeServer();
     }
   }
 
@@ -253,11 +234,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void handleDidConnectEvent() {
     print("handleDidConnectEvent");
     if (!isAndroid) {
-      _iOsCallManager.startTimeoutForIncomingCall();
+      _iOSCallManager.startTimeoutForIncomingCall();
     }
 
     setState(() {
-      myUserId = common.client.userId;
+      myUserId = InstanceManager.client.userId;
     });
 
     registerPushWithStringeeServer();
@@ -266,7 +247,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void handleDiddisconnectEvent() {
     print("handleDiddisconnectEvent");
     if (!isAndroid) {
-      _iOsCallManager.stopTimeoutForIncomingCall();
+      _iOSCallManager.stopTimeoutForIncomingCall();
     }
 
     setState(() {
@@ -309,52 +290,7 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
     );
   }
-
-  /// Cac ham xu ly Push, Pushkit
-  ///
-  // Configures a voip push notification
-  Future<void> configureVoipNotificationLibrary() async {
-    // request permission (required)
-    await _voipPush.requestNotificationPermissions();
-
-    // listen to voip device token changes
-    _voipPush.onTokenRefresh.listen(onToken);
-
-    // do configure voip push
-    _voipPush.configure(onMessage: onMessage, onResume: onResume);
-  }
-
-  // Called when the device token changes
-  void onToken(String token) {
-    // nhan duoc token tu apple thi can register voi Stringee Server
-    print('onToken: ' + token);
-    setState(() {
-      _pushToken = token;
-    });
-    registerPushWithStringeeServer();
-  }
-
-  // Called to receive notification when app is in foreground
-  //
-  // [isLocal] is true if its a local notification or false otherwise (remote notification)
-  // [payload] the notification payload to be processed. use this to present a local notification
-  Future<dynamic> onMessage(bool isLocal, Map<String, dynamic> payload) {
-    // handle foreground notification
-    print("received on foreground payload: $payload, isLocal=$isLocal");
-    _iOsCallManager.handleIncomingPushNotification(payload);
-    return null;
-  }
-
-  // Called to receive notification when app is resuming from background
-  //
-  // [isLocal] is true if its a local notification or false otherwise (remote notification)
-  // [payload] the notification payload to be processed. use this to present a local notification
-  Future<dynamic> onResume(bool isLocal, Map<String, dynamic> payload) {
-    // handle background notification
-    print("received on background payload: $payload, isLocal=$isLocal");
-    _iOsCallManager.handleIncomingPushNotification(payload);
-    return null;
-  }
+  
 }
 
 class ActionForm extends StatefulWidget {
@@ -398,7 +334,7 @@ class _ActionFormState extends State<ActionForm> {
                       color: Colors.grey[300],
                       textColor: Colors.black,
                       onPressed: () {
-                        callTapped(false);
+                        callTapped(false, false);
                       },
                       child: Text('CALL'),
                     ),
@@ -410,9 +346,41 @@ class _ActionFormState extends State<ActionForm> {
                       color: Colors.grey[300],
                       textColor: Colors.black,
                       onPressed: () {
-                        callTapped(true);
+                        callTapped(true, false);
                       },
                       child: Text('VIDEOCALL'),
+                    ),
+                  ),
+                ],
+              )),
+          new Container(
+              margin: EdgeInsets.only(top: 20.0),
+              child: new Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  new Container(
+                    height: 40.0,
+                    width: 150.0,
+                    child: new RaisedButton(
+                      color: Colors.grey[300],
+                      textColor: Colors.black,
+                      onPressed: () {
+                        callTapped(false, true);
+                      },
+                      child: Text('CALL2'),
+                    ),
+                  ),
+                  new Container(
+                    height: 40.0,
+                    width: 150.0,
+                    child: new RaisedButton(
+                      color: Colors.grey[300],
+                      textColor: Colors.black,
+                      onPressed: () {
+                        callTapped(true, true);
+                      },
+                      child: Text('VIDEOCALL2'),
                     ),
                   ),
                 ],
@@ -422,21 +390,22 @@ class _ActionFormState extends State<ActionForm> {
     );
   }
 
-  void callTapped(bool isVideo) {
-    if (toUserId.isEmpty || !common.client.hasConnected) return;
+  void callTapped(bool isVideo, bool useCall2) {
+    if (toUserId.isEmpty || !InstanceManager.client.hasConnected) return;
 
     GlobalKey<CallScreenState> callScreenKey = GlobalKey<CallScreenState>();
     if (isAndroid) {
       _androidCallManager.callScreenKey = callScreenKey;
     } else {
-      _iOsCallManager.callScreenKey = callScreenKey;
+      _iOSCallManager.callScreenKey = callScreenKey;
     }
 
     CallScreen callScreen = CallScreen(
       key: callScreenKey,
-      fromUserId: common.client.userId,
+      fromUserId: InstanceManager.client.userId,
       toUserId: toUserId,
       isVideo: isVideo,
+      useCall2: useCall2,
     );
 
     Navigator.push(
