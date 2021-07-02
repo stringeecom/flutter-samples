@@ -56,11 +56,8 @@ class IOSCallManager with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     print('didChangeAppLifecycleState = $state');
     appLifecycleState = state;
-    if (state == AppLifecycleState.resumed &&
-        syncCall != null &&
-        syncCall.stringeeCall != null &&
-        !syncCall.ended()) {
-      showCallScreen(syncCall.stringeeCall, contextToShowCallScreen);
+    if (state == AppLifecycleState.resumed && syncCall != null && syncCall.hasStringeeCall() && !syncCall.ended()) {
+      showCallScreen(contextToShowCallScreen);
     }
   }
 
@@ -121,12 +118,10 @@ class IOSCallManager with WidgetsBindingObserver {
       syncCall.uuid = genUUID();
 
       // Show callkit
-      // _callKit.displayIncomingCall(syncCall.uuid, call.from, call.fromAlias);
-      callKeep.displayIncomingCall(syncCall.uuid, call.from,
-          localizedCallerName: call.fromAlias);
+      callKeep.displayIncomingCall(syncCall.uuid, call.from, localizedCallerName: call.fromAlias);
 
       // Show callScreen
-      showCallScreen(call, context);
+      showCallScreen(context);
 
       call.initAnswer().then((result) {
         String message = result['message'];
@@ -155,24 +150,71 @@ class IOSCallManager with WidgetsBindingObserver {
     syncCall.attachCall(call);
     if (syncCall.uuid.isEmpty) {
       syncCall.uuid = genUUID();
-      // _callKit.displayIncomingCall(syncCall.uuid, call.from, call.fromAlias);
-      callKeep.displayIncomingCall(syncCall.uuid, call.from,
-          localizedCallerName: call.fromAlias);
+      callKeep.displayIncomingCall(syncCall.uuid, call.from, localizedCallerName: call.fromAlias);
     } else {
-      // _callKit.updateDisplay(syncCall.uuid, call.from, call.fromAlias);
-      callKeep.updateDisplay(syncCall.uuid,
-          displayName: call.fromAlias, handle: call.from);
+      callKeep.updateDisplay(syncCall.uuid, displayName: call.fromAlias, handle: call.from);
     }
 
-    showCallScreen(call, context);
+    showCallScreen(context);
 
     call.initAnswer();
     syncCall.answerIfConditionPassed();
   }
 
-  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) {}
+  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) {
+    print("handleIncomingCall2Event, callId: " + call.id);
 
-  void showCallScreen(StringeeCall call, BuildContext context) {
+    // Chưa có sync call thì tạo mới
+    if (syncCall == null) {
+      syncCall = SyncCall();
+      syncCall.attachCall2(call);
+      syncCall.uuid = genUUID();
+
+      // Show callkit
+      callKeep.displayIncomingCall(syncCall.uuid, call.from, localizedCallerName: call.fromAlias);
+
+      // Show callScreen
+      showCallScreen(context);
+
+      call.initAnswer().then((result) {
+        String message = result['message'];
+        print("initAnswer: " + message);
+      });
+      syncCall.answerIfConditionPassed();
+
+      return;
+    }
+
+    // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
+    if (!syncCall.isThisCall(call.id, call.serial)) {
+      print("Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject");
+      call.reject();
+      return;
+    }
+
+    // Người dùng đã click reject cuộc gọi thì reject
+    if (syncCall.userRejected) {
+      print("Người dùng đã click reject cuộc gọi thì reject");
+      call.reject();
+      return;
+    }
+
+    // Chưa show callkit thì show không thì update thông tin người gọi lên giao diện
+    syncCall.attachCall2(call);
+    if (syncCall.uuid.isEmpty) {
+      syncCall.uuid = genUUID();
+      callKeep.displayIncomingCall(syncCall.uuid, call.from, localizedCallerName: call.fromAlias);
+    } else {
+      callKeep.updateDisplay(syncCall.uuid, displayName: call.fromAlias, handle: call.from);
+    }
+
+    showCallScreen(context);
+
+    call.initAnswer();
+    syncCall.answerIfConditionPassed();
+  }
+
+  void showCallScreen(BuildContext context) {
     if (context == null) {
       return;
     }
@@ -182,19 +224,16 @@ class IOSCallManager with WidgetsBindingObserver {
     // Listen events
     addListenerForCall();
 
-    if (appLifecycleState != AppLifecycleState.resumed ||
-        syncCall == null ||
-        syncCall.stringeeCall == null ||
-        callScreenKey != null) {
+    if (appLifecycleState != AppLifecycleState.resumed || syncCall == null || !syncCall.hasStringeeCall() || callScreenKey != null) {
       return;
     }
 
     callScreenKey = GlobalKey<CallScreenState>();
     CallScreen callScreen = CallScreen(
         key: callScreenKey,
-        fromUserId: syncCall.stringeeCall.to,
-        toUserId: syncCall.stringeeCall.from,
-        isVideo: syncCall.stringeeCall.isVideoCall);
+        fromUserId: syncCall.to(),
+        toUserId: syncCall.from(),
+        isVideo: syncCall.isVideoCall());
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => callScreen),
@@ -202,7 +241,8 @@ class IOSCallManager with WidgetsBindingObserver {
   }
 
   void addListenerForCall() {
-    if (!syncCall.stringeeCall.eventStreamController.hasListener) {
+    // StringeeCall
+    if (syncCall.stringeeCall != null && !syncCall.stringeeCall.eventStreamController.hasListener) {
       syncCall.stringeeCall.eventStreamController.stream.listen((event) {
         Map<dynamic, dynamic> map = event;
         switch (map['eventType']) {
@@ -229,6 +269,35 @@ class IOSCallManager with WidgetsBindingObserver {
         }
       });
     }
+
+    // StringeeCall2
+    if (syncCall.stringeeCall2 != null && !syncCall.stringeeCall2.eventStreamController.hasListener) {
+      syncCall.stringeeCall2.eventStreamController.stream.listen((event) {
+        Map<dynamic, dynamic> map = event;
+        switch (map['eventType']) {
+          case StringeeCall2Events.didChangeSignalingState:
+            handleSignalingStateChangeEvent(map['body']);
+            break;
+          case StringeeCall2Events.didChangeMediaState:
+            handleMediaStateChangeEvent(map['body']);
+            break;
+          case StringeeCall2Events.didReceiveCallInfo:
+            handleReceiveCallInfoEvent(map['body']);
+            break;
+          case StringeeCall2Events.didHandleOnAnotherDevice:
+            handleHandleOnAnotherDeviceEvent(map['body']);
+            break;
+          case StringeeCall2Events.didReceiveLocalStream:
+            handleReceiveLocalStreamEvent(map['body']);
+            break;
+          case StringeeCall2Events.didReceiveRemoteStream:
+            handleReceiveRemoteStreamEvent(map['body']);
+            break;
+          default:
+            break;
+        }
+      });
+    }
   }
 
   void showFakeCall() {
@@ -239,13 +308,12 @@ class IOSCallManager with WidgetsBindingObserver {
       Note: Thực hiện end fake call trong callback 'didDisplayIncomingCall'
     **/
     String fakeCallUuid = genUUID();
-    // _callKit.displayIncomingCall(fakeCallUuid, "Stringee", "CallEnded");
+    callKeep.displayIncomingCall(fakeCallUuid, "Stringee", localizedCallerName: "Call Ended");
     _fakeCallUuids.add(fakeCallUuid);
   }
 
   void endFakeCall(String uuid) {
     if (_fakeCallUuids.contains(uuid)) {
-      // _callKit.endCall(uuid);
       callKeep.endCall(uuid);
       _fakeCallUuids.remove(uuid);
       print("End fake call voi uuid: " + uuid);
@@ -291,7 +359,6 @@ class IOSCallManager with WidgetsBindingObserver {
   }
 
   void endCallkit() {
-    // _callKit.endAllCalls();
     callKeep.endAllCalls();
   }
 
@@ -342,6 +409,10 @@ class IOSCallManager with WidgetsBindingObserver {
 
   void handleHandleOnAnotherDeviceEvent(StringeeSignalingState state) {
     print('handleHandleOnAnotherDeviceEvent - $state');
+    if (state == StringeeSignalingState.answered || state == StringeeSignalingState.busy || state == StringeeSignalingState.ended) {
+      syncCall.endedStringeeCall = true;
+      clearDataEndDismiss();
+    }
   }
 
   void handleReceiveLocalStreamEvent(String callId) {
@@ -356,8 +427,8 @@ class IOSCallManager with WidgetsBindingObserver {
 
   void clearDataEndDismiss() {
     print('clearDataEndDismiss');
-    if (syncCall != null && syncCall.stringeeCall != null) {
-      syncCall.stringeeCall.destroy();
+    if (syncCall != null) {
+      syncCall.destroy();
     }
     endCallkit();
     deleteSyncCallIfNeed();
@@ -381,7 +452,7 @@ class IOSCallManager with WidgetsBindingObserver {
         return;
       }
 
-      if (syncCall.stringeeCall == null) {
+      if (!syncCall.hasStringeeCall()) {
         syncCall.endedStringeeCall = true;
         callKeep.endAllCalls();
         saveSyncCallToHandledCallList(syncCall);
@@ -466,9 +537,7 @@ class IOSCallManager with WidgetsBindingObserver {
   Future<void> answerCall(CallKeepPerformAnswerCallAction event) async {
     // Called when the user answers an incoming call
     print("performAnswerCallAction, uuid: ${event.callUUID}");
-    if (syncCall == null ||
-        syncCall.uuid.isEmpty ||
-        syncCall.uuid != event.callUUID) {
+    if (syncCall == null || syncCall.uuid.isEmpty || syncCall.uuid != event.callUUID) {
       return;
     }
     syncCall.userAnswered = true;
@@ -481,18 +550,14 @@ class IOSCallManager with WidgetsBindingObserver {
        Được gọi khi người dùng reject (ngắt ở màn hình cuộc gọi đến) hoặc hangup (ngắt ở màn hình cuộc gọi đang diễn ra) cuộc gọi từ màn hỉnh callkit
        => Cần kiểm tra điều kiện để biết nên gọi hàm reject hay hangup của StringeeCall object. 2 hàm này có ý nghĩa khác nhau.
        **/
-    if (syncCall == null ||
-        syncCall.uuid.isEmpty ||
-        syncCall.uuid != event.callUUID) {
+    if (syncCall == null || syncCall.uuid.isEmpty || syncCall.uuid != event.callUUID) {
       return;
     }
 
     syncCall.endedCallkit = true;
     syncCall.userRejected = true;
 
-    if (syncCall.stringeeCall != null &&
-        syncCall.callState != StringeeSignalingState.busy &&
-        syncCall.callState != StringeeSignalingState.ended) {
+    if (syncCall.hasStringeeCall() && syncCall.callState != StringeeSignalingState.busy && syncCall.callState != StringeeSignalingState.ended) {
       // Nếu StringeeCall đã được answer thì gọi hàm hangup() nếu chưa thì reject()
       if (syncCall.callAnswered) {
         syncCall.hangup();

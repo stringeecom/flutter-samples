@@ -26,12 +26,14 @@ class CallScreen extends StatefulWidget {
   bool isVideo = false;
   bool showIncomingUI = false;
   bool dismissFuncCalled = false;
+  bool useCall2 = false;
 
   CallScreen({
     Key key,
     @required this.fromUserId,
     @required this.toUserId,
     @required this.isVideo,
+    @required this.useCall2,
   }) : super(key: key);
 
   @override
@@ -160,7 +162,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         ? new StringeeVideoView(
             isAndroid
                 ? _androidCallManager.stringeeCall.id
-                : _iOSCallManager.syncCall.stringeeCall.id,
+                : _iOSCallManager.syncCall.callId,
             true,
             color: Colors.white,
             alignment: Alignment.topRight,
@@ -176,7 +178,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         ? new StringeeVideoView(
             isAndroid
                 ? _androidCallManager.stringeeCall.id
-                : _iOSCallManager.syncCall.stringeeCall.id,
+                : _iOSCallManager.syncCall.callId,
             false,
             color: Colors.blue,
             isOverlay: false,
@@ -223,19 +225,28 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
         }
       });
     } else {
-      var outgoingCall = StringeeCall(InstanceManager.client);
       _iOSCallManager.syncCall = SyncCall();
-      _iOSCallManager.syncCall.stringeeCall = outgoingCall;
+      var outgoingCall;
+      if (widget.useCall2) {
+        outgoingCall = StringeeCall2(InstanceManager.client);
+        _iOSCallManager.syncCall.stringeeCall2 = outgoingCall;
+      } else {
+        outgoingCall = StringeeCall(InstanceManager.client);
+        _iOSCallManager.syncCall.stringeeCall = outgoingCall;
+      }
       _iOSCallManager.addListenerForCall();
 
       outgoingCall.makeCall(parameters).then((result) {
         bool status = result['status'];
         int code = result['code'];
         String message = result['message'];
-        print(
-            'MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
+        print('MakeCall CallBack --- $status - $code - $message - ${outgoingCall.id} - ${outgoingCall.from} - ${outgoingCall.to}');
 
-        _iOSCallManager.syncCall.attachCall(outgoingCall);
+        if (widget.useCall2) {
+          _iOSCallManager.syncCall.attachCall2(outgoingCall);
+        } else {
+          _iOSCallManager.syncCall.attachCall(outgoingCall);
+        }
 
         if (!status) {
           _iOSCallManager.clearDataEndDismiss();

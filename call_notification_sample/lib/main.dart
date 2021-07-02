@@ -109,8 +109,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String myUserId = "";
-  String _pushToken = "";
-  bool registeredPushWithStringeeServer = false;
 
   @override
   Future<void> initState() {
@@ -155,6 +153,12 @@ class _MyHomePageState extends State<MyHomePage> {
           }
           break;
         case StringeeClientEvents.incomingCall2:
+          StringeeCall2 call = map['body'];
+          if (isAndroid) {
+
+          } else {
+            _iOSCallManager.handleIncomingCall2Event(call, context);
+          }
           break;
         case StringeeClientEvents.didReceiveObjectChange:
           StringeeObjectChange objectChange = map['body'];
@@ -330,7 +334,7 @@ class _ActionFormState extends State<ActionForm> {
                       color: Colors.grey[300],
                       textColor: Colors.black,
                       onPressed: () {
-                        callTapped(false);
+                        callTapped(false, false);
                       },
                       child: Text('CALL'),
                     ),
@@ -342,9 +346,41 @@ class _ActionFormState extends State<ActionForm> {
                       color: Colors.grey[300],
                       textColor: Colors.black,
                       onPressed: () {
-                        callTapped(true);
+                        callTapped(true, false);
                       },
                       child: Text('VIDEOCALL'),
+                    ),
+                  ),
+                ],
+              )),
+          new Container(
+              margin: EdgeInsets.only(top: 20.0),
+              child: new Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  new Container(
+                    height: 40.0,
+                    width: 150.0,
+                    child: new RaisedButton(
+                      color: Colors.grey[300],
+                      textColor: Colors.black,
+                      onPressed: () {
+                        callTapped(false, true);
+                      },
+                      child: Text('CALL2'),
+                    ),
+                  ),
+                  new Container(
+                    height: 40.0,
+                    width: 150.0,
+                    child: new RaisedButton(
+                      color: Colors.grey[300],
+                      textColor: Colors.black,
+                      onPressed: () {
+                        callTapped(true, true);
+                      },
+                      child: Text('VIDEOCALL2'),
                     ),
                   ),
                 ],
@@ -354,7 +390,7 @@ class _ActionFormState extends State<ActionForm> {
     );
   }
 
-  void callTapped(bool isVideo) {
+  void callTapped(bool isVideo, bool useCall2) {
     if (toUserId.isEmpty || !InstanceManager.client.hasConnected) return;
 
     GlobalKey<CallScreenState> callScreenKey = GlobalKey<CallScreenState>();
@@ -369,6 +405,7 @@ class _ActionFormState extends State<ActionForm> {
       fromUserId: InstanceManager.client.userId,
       toUserId: toUserId,
       isVideo: isVideo,
+      useCall2: useCall2,
     );
 
     Navigator.push(
