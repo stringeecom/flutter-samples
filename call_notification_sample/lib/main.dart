@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -7,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:ios_call_notification_sample/managers/android_call_manager.dart';
 import 'package:ios_call_notification_sample/managers/ios_call_manager.dart';
-import 'package:permission/permission.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
@@ -160,32 +161,20 @@ class _MyHomePageState extends State<MyHomePage> {
             _iOSCallManager.handleIncomingCall2Event(call, context);
           }
           break;
-        case StringeeClientEvents.didReceiveObjectChange:
-          StringeeObjectChange objectChange = map['body'];
-          print(objectChange.objectType.toString() +
-              '\t' +
-              objectChange.type.toString());
-          print(objectChange.objects.toString());
-          break;
         default:
           break;
       }
     });
 
-    InstanceManager.client.connect(user2);
+    InstanceManager.client.connect(user1);
   }
 
   requestPermissions() async {
-    List<PermissionName> permissionNames = [];
-    permissionNames.add(PermissionName.Camera);
-    permissionNames.add(PermissionName.Contacts);
-    permissionNames.add(PermissionName.Microphone);
-    permissionNames.add(PermissionName.Location);
-    permissionNames.add(PermissionName.Storage);
-    permissionNames.add(PermissionName.State);
-    permissionNames.add(PermissionName.Internet);
-    var permissions = await Permission.requestPermissions(permissionNames);
-    permissions.forEach((permission) {});
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.microphone,
+    ].request();
+    print(statuses);
   }
 
   Future<void> registerPushWithStringeeServer() async {
