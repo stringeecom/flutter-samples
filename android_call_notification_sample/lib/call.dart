@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'common.dart' as common;
+import 'main.dart' as main;
 
 StringeeCall _stringeeCall;
 StringeeCall2 _stringeeCall2;
@@ -230,12 +231,22 @@ class _CallState extends State<Call> {
     });
 
     if (widget.showIncomingUi) {
-      _stringeeCall.initAnswer().then((event) {
-        bool status = event['status'];
-        if (!status) {
-          clearDataEndDismiss();
-        }
-      });
+      if (main.rejected) {
+        main.rejected = false;
+        _rejectCallTapped();
+      } else {
+        _stringeeCall.initAnswer().then((event) {
+          bool status = event['status'];
+          if (!status) {
+            clearDataEndDismiss();
+          } else {
+            if (main.answered) {
+              main.answered = false;
+              _acceptCallTapped();
+            }
+          }
+        });
+      }
     } else {
       final parameters = {
         'from': widget.fromUserId,
@@ -300,12 +311,22 @@ class _CallState extends State<Call> {
     });
 
     if (widget.showIncomingUi) {
-      _stringeeCall2.initAnswer().then((event) {
-        bool status = event['status'];
-        if (!status) {
-          clearDataEndDismiss();
-        }
-      });
+      if (main.rejected) {
+        main.rejected = false;
+        _rejectCallTapped();
+      } else {
+        _stringeeCall2.initAnswer().then((event) {
+          bool status = event['status'];
+          if (!status) {
+            clearDataEndDismiss();
+          } else {
+            if (main.answered) {
+              main.answered = false;
+              _acceptCallTapped();
+            }
+          }
+        });
+      }
     } else {
       final parameters = {
         'from': widget.fromUserId,

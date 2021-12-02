@@ -3,10 +3,8 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission/permission.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
@@ -15,12 +13,13 @@ import 'common.dart' as common;
 
 var token = 'PUT_YOUR_TOKEN_HERE';
 
-StringeeCall _call;
-StringeeCall2 _call2;
+StringeeCall call;
+StringeeCall2 call2;
 
-FlutterLocalNotificationsPlugin _localNotifications =
-    FlutterLocalNotificationsPlugin();
-bool _showIncomingCall = false;
+StringeeNotification stringeeNotification = StringeeNotification();
+bool showIncomingCall = false;
+bool answered = false;
+bool rejected = false;
 
 String strUserId = "";
 
@@ -30,49 +29,36 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   Map<dynamic, dynamic> _notiData = remoteMessage.data;
   Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
 
-  const AndroidInitializationSettings androidSettings =
-      AndroidInitializationSettings('@drawable/ic_noti');
-  final IOSInitializationSettings iOSSettings = IOSInitializationSettings();
-  final MacOSInitializationSettings macOSSettings =
-      MacOSInitializationSettings();
-  final InitializationSettings initializationSettings = InitializationSettings(
-      android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
-  await _localNotifications
-      .initialize(
-    initializationSettings,
-    onSelectNotification: null,
-  )
-      .then((value) async {
-    if (value) {
-      print("Stringee notification:" + _data.toString());
-      if (_data['callStatus'] == 'started') {
-        /// Create channel for notification
-        const AndroidNotificationDetails androidPlatformChannelSpecifics =
-            AndroidNotificationDetails(
-          'your channel id',
-          'your channel name',
-          'your channel description',
-          importance: Importance.max,
-          priority: Priority.high,
-          fullScreenIntent: true,
+  if (_data['callStatus'] == 'started') {
+    showNotification(_data['from']['alias'], _data['from']['number']);
+  } else if (_data['callStatus'] == 'ended') {
+    stringeeNotification.cancel(123456);
+  }
+}
 
-          /// Set true for show App in lockScreen
-        );
-        const NotificationDetails platformChannelSpecifics =
-            NotificationDetails(android: androidPlatformChannelSpecifics);
+void showNotification(String from, String number) {
+  /// Create channel for notification
+  NotificationChannel channel = new NotificationChannel(
+    "channelId",
+    "channelName",
+    "description",
+    importance: NotificationImportance.Max,
+  );
+  stringeeNotification.createChannel(channel);
 
-        /// Show notification
-        await _localNotifications.show(
-          0,
-          'Incoming Call',
-          'from ' + _data['from']['alias'],
-          platformChannelSpecifics,
-        );
-      } else if (_data['callStatus'] == 'ended') {
-        _localNotifications.cancel(0);
-      }
-    }
-  });
+  /// Show notification
+  NotificationAndroid notification = new NotificationAndroid(
+      123456, channel.channelId,
+      fullScreenIntent: true,
+      category: NotificationCategory.Call,
+      priority: NotificationPriority.Max,
+      contentTitle: 'Incoming from $from',
+      contentText: number,
+      actions: [
+        new NotificationAction(id: 'answer', title: 'Answer'),
+        new NotificationAction(id: 'reject', title: 'Reject'),
+      ]);
+  stringeeNotification.showNotification(notification);
 }
 
 Future<void> main() async {
@@ -82,6 +68,19 @@ Future<void> main() async {
       print("completed");
       FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
     });
+
+  stringeeNotification.listenActionPress((actionId) async {
+    print('Stringee Notification action: $actionId');
+    stringeeNotification.cancel(123456);
+    switch (actionId) {
+      case 'answer':
+        answered = true;
+        break;
+      case 'reject':
+        rejected = true;
+        break;
+    }
+  });
 
   runApp(new MyApp());
 }
@@ -108,7 +107,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _localNotifications.cancel(0);
+      stringeeNotification.cancel(123456);
       isAppInBackground = false;
     } else if (state == AppLifecycleState.inactive) {
       isAppInBackground = true;
@@ -116,9 +115,22 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
     if (state == AppLifecycleState.resumed && common.client != null) {
       if (common.client.hasConnected &&
-          _showIncomingCall &&
+          showIncomingCall &&
           Platform.isAndroid) {
-        showCallScreen(_call, _call2);
+        if (rejected) {
+          if (call != null) {
+            call.reject();
+            call = null;
+            rejected = false;
+          }
+          if (call2 != null) {
+            call2.reject();
+            call2 = null;
+            rejected = false;
+          }
+        } else {
+          showCallScreen(call, call2);
+        }
       }
     }
   }
@@ -167,13 +179,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           StringeeCall2 call = map['body'];
           handleIncomingCall2Event(call);
           break;
-        case StringeeClientEvents.didReceiveObjectChange:
-          StringeeObjectChange objectChange = map['body'];
-          print(objectChange.objectType.toString() +
-              '\t' +
-              objectChange.type.toString());
-          print(objectChange.objects.toString());
-          break;
         default:
           break;
       }
@@ -184,16 +189,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   requestPermissions() async {
-    List<PermissionName> permissionNames = [];
-    permissionNames.add(PermissionName.Camera);
-    permissionNames.add(PermissionName.Contacts);
-    permissionNames.add(PermissionName.Microphone);
-    permissionNames.add(PermissionName.Location);
-    permissionNames.add(PermissionName.Storage);
-    permissionNames.add(PermissionName.State);
-    permissionNames.add(PermissionName.Internet);
-    var permissions = await Permission.requestPermissions(permissionNames);
-    permissions.forEach((permission) {});
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.microphone,
+    ].request();
+    print(statuses);
   }
 
   @override
@@ -287,26 +287,36 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     print('from: ' + map['fromUserId'] + '\nmessage: ' + map['message']);
   }
 
-  void handleIncomingCallEvent(StringeeCall call) {
+  void handleIncomingCallEvent(StringeeCall stringeeCall) {
     if (!isAppInBackground || !Platform.isAndroid) {
-      showCallScreen(call, null);
+      if (rejected) {
+        stringeeCall.reject();
+        rejected = false;
+      } else {
+        showCallScreen(stringeeCall, null);
+      }
     } else {
-      _showIncomingCall = true;
-      _call = call;
+      showIncomingCall = true;
+      call = stringeeCall;
     }
   }
 
-  void handleIncomingCall2Event(StringeeCall2 call) {
+  void handleIncomingCall2Event(StringeeCall2 stringeeCall2) {
     if (!isAppInBackground || !Platform.isAndroid) {
-      showCallScreen(null, call);
+      if (rejected) {
+        stringeeCall2.reject();
+        rejected = false;
+      } else {
+        showCallScreen(null, stringeeCall2);
+      }
     } else {
-      _showIncomingCall = true;
-      _call2 = call;
+      showIncomingCall = true;
+      call2 = stringeeCall2;
     }
   }
 
   void showCallScreen(StringeeCall call, StringeeCall2 call2) {
-    _showIncomingCall = false;
+    showIncomingCall = false;
     Navigator.push(
       context,
       MaterialPageRoute(
