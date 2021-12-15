@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'package:flutter_apns/flutter_apns.dart';
 import 'conversation.dart';
-import 'storage.dart';
 
 StringeeClient client = new StringeeClient();
 StringeeChat chat = new StringeeChat(client);
@@ -31,14 +30,12 @@ class ChatScreenState extends State<ChatScreen> {
 
   // Cấu hình sử dụng Push với thư viện flutter_apns
   Future<void> _registerWithFlutterApns() async {
-    await storage.setup();
-
     final connector = this.connector;
     connector.configure(
       onLaunch: (data) => onPush('onLaunch', data),
       onResume: (data) => onPush('onResume', data),
       onMessage: (data) => onPush('onMessage', data),
-      onBackgroundMessage: _onBackgroundMessage,
+      onBackgroundMessage: (data) => onPush('onBackgroundMessage', data),
     );
     connector.token.addListener(() {
       print('Token ${connector.token.value}');
@@ -46,48 +43,11 @@ class ChatScreenState extends State<ChatScreen> {
       _registerDeviceTokenWithStringeeIfNeed();
     });
     connector.requestNotificationPermissions();
-
-    if (connector is ApnsPushConnector) {
-      connector.shouldPresent = (x) async {
-        final remote = RemoteMessage.fromMap(x.payload);
-        return remote.category == 'MEETING_INVITATION';
-      };
-      connector.setNotificationCategories([
-        UNNotificationCategory(
-          identifier: 'MEETING_INVITATION',
-          actions: [
-            UNNotificationAction(
-              identifier: 'ACCEPT_ACTION',
-              title: 'Accept',
-              options: UNNotificationActionOptions.values,
-            ),
-            UNNotificationAction(
-              identifier: 'DECLINE_ACTION',
-              title: 'Decline',
-              options: [],
-            ),
-          ],
-          intentIdentifiers: [],
-          options: UNNotificationCategoryOptions.values,
-        ),
-      ]);
-    }
   }
 
   Future<dynamic> onPush(String name, RemoteMessage payload) {
-    storage.append('$name: ${payload.notification?.title}');
-
-    final action = UNNotificationAction.getIdentifier(payload.data);
-
-    if (action != null && action != UNNotificationAction.defaultIdentifier) {
-      storage.append('Action: $action');
-    }
-
-    return Future.value(true);
-  }
-
-  Future<dynamic> _onBackgroundMessage(RemoteMessage data) {
-    return onPush('onBackgroundMessage', data);
+    print('onPush: ' + name);
+    return Future.value(false);
   }
 
   void _registerDeviceTokenWithStringeeIfNeed() {
