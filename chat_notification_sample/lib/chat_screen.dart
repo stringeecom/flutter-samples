@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
-import 'package:flutter_apns/flutter_apns.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'conversation.dart';
 
 StringeeClient client = new StringeeClient();
 StringeeChat chat = new StringeeChat(client);
 
-String user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xiT0Rpa3o4ZHBITGRvVU92c0lJYWdCTFZqUXNJOXdKLTE2Mzk0NjkyODYiLCJpc3MiOiJTS0xiT0Rpa3o4ZHBITGRvVU92c0lJYWdCTFZqUXNJOXdKIiwiZXhwIjoxNjQyMDYxMjg2LCJ1c2VySWQiOiJ1c2VyMSJ9.oHt7rgQWrzbS9E5BbMwg3o5lefghoU5dUYEDCflTjdM';
-String user100 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0xiT0Rpa3o4ZHBITGRvVU92c0lJYWdCTFZqUXNJOXdKLTE2Mzk0NzcxNjEiLCJpc3MiOiJTS0xiT0Rpa3o4ZHBITGRvVU92c0lJYWdCTFZqUXNJOXdKIiwiZXhwIjoxNjQyMDY5MTYxLCJ1c2VySWQiOiJ1c2VyMTAwIn0.t620bDe4tXRYnQJq78RtzqyFQL4GrU0vcFz9Iqk0IXs';
+String user1 = '';
+String user100 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImN0eSI6InN0cmluZ2VlLWFwaTt2PTEifQ.eyJqdGkiOiJTS2RDY2tNUXBGSTFub0lrRUVKc01nbE96ekE4VDRMRVhQLTE2NDI0OTY5MjUiLCJpc3MiOiJTS2RDY2tNUXBGSTFub0lrRUVKc01nbE96ekE4VDRMRVhQIiwiZXhwIjoxNjQyNTgzMzI1LCJ1c2VySWQiOiIxMDAyOTgiLCJjYW5DYWxsb3V0IjpmYWxzZSwiaWF0IjoxNjQyNDk2OTI1fQ.sudUDv3tRDsZUxoGwaVtu1W3W_599Uw0w4aKsBERNtw';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -24,34 +24,43 @@ class ChatScreenState extends State<ChatScreen> {
   List<String> _log = [];
   List<StringeeConversation> _conversations = [];
 
-  final PushConnector connector = createPushConnector();
   bool registeredPush = false;
-  var pushToken = '';
 
-  // Cấu hình sử dụng Push với thư viện flutter_apns
-  Future<void> _registerWithFlutterApns() async {
-    final connector = this.connector;
-    connector.configure(
-      onLaunch: (data) => onPush('onLaunch', data),
-      onResume: (data) => onPush('onResume', data),
-      onMessage: (data) => onPush('onMessage', data),
-      onBackgroundMessage: (data) => onPush('onBackgroundMessage', data),
+  Future<void> _settingNotification() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
     );
-    connector.token.addListener(() {
-      print('Token ${connector.token.value}');
-      pushToken = connector.token.value!;
-      _registerDeviceTokenWithStringeeIfNeed();
+
+    print('User granted permission: ${settings.authorizationStatus}');
+
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Handling a onMessage ${message}');
     });
-    connector.requestNotificationPermissions();
+
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      print('Handling a onMessageOpenedApp ${message}');
+    });
+
+    _registerDeviceTokenWithStringeeIfNeed();
   }
 
-  Future<dynamic> onPush(String name, RemoteMessage payload) {
-    print('onPush: ' + name);
-    return Future.value(false);
+  Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+    print('Handling a background message ${message}');
   }
 
-  void _registerDeviceTokenWithStringeeIfNeed() {
-    if (pushToken.isEmpty || registeredPush || !client.hasConnected) {
+  Future<void> _registerDeviceTokenWithStringeeIfNeed() async {
+    String? pushToken = await FirebaseMessaging.instance.getAPNSToken();
+    print('Token: ${pushToken}');
+    if (pushToken == null || pushToken.isEmpty || registeredPush || !client.hasConnected) {
       return;
     }
 
@@ -64,8 +73,8 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     // TODO: implement initState
-    _registerWithFlutterApns();
     super.initState();
+    _settingNotification();
 
     /// Lắng nghe sự kiện của StringeeClient(kết nối, cuộc gọi đến...)
     client.eventStreamController.stream.listen((event) {
