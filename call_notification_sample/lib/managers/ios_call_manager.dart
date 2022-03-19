@@ -395,6 +395,7 @@ class IOSCallManager with WidgetsBindingObserver {
     syncCall.status = state.toString().split('.')[1];
     switch (state) {
       case StringeeMediaState.connected:
+        syncCall.routeAudioToSpeakerIfNeed();
         break;
       case StringeeMediaState.disconnected:
         break;

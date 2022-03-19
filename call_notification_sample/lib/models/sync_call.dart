@@ -33,6 +33,7 @@ class SyncCall {
   bool hasLocalStream = false;
   bool hasRemoteStream = false;
   var _status = '';
+  bool mediaFirstTimeConnected = false; // Thêm biến này để check nếu là lần đầu media connected thì nếu là cuộc gọi video sẽ cho audio ra loa ngoài
 
   set status(value) {
     _status = value;
@@ -250,6 +251,18 @@ class SyncCall {
     }
     updateUI();
     return true;
+  }
+
+  void routeAudioToSpeakerIfNeed() {
+    if (mediaFirstTimeConnected) {
+      return;
+    }
+
+    if ((stringeeCall != null && stringeeCall.isVideoCall) || (stringeeCall2 != null && stringeeCall2.isVideoCall)) {
+      mediaFirstTimeConnected = true;
+      isSpeaker = false;
+      setSpeakerphoneOn();
+    }
   }
 
   void endCallIfNeed() {
