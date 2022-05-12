@@ -17,6 +17,7 @@ class Conversation extends StatefulWidget {
     _conversation = conversation;
   }
 
+
   @override
   State<StatefulWidget> createState() {
     // TODO: implement createState
