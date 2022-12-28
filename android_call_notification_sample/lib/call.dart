@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'common.dart' as common;
-import 'main.dart' as main;
 
 StringeeCall _stringeeCall;
 StringeeCall2 _stringeeCall2;
@@ -37,7 +36,6 @@ class Call extends StatefulWidget {
 
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return _CallState();
   }
 }
@@ -47,7 +45,6 @@ class _CallState extends State<Call> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
 
     widget.isSpeaker = widget.isVideoCall;
@@ -61,7 +58,7 @@ class _CallState extends State<Call> {
 
   @override
   Widget build(BuildContext context) {
-    Widget NameCalling = new Container(
+    Widget nameCalling = new Container(
       alignment: Alignment.topCenter,
       padding: EdgeInsets.only(top: 120.0),
       child: new Column(
@@ -82,7 +79,7 @@ class _CallState extends State<Call> {
           new Container(
             alignment: Alignment.center,
             child: new Text(
-              '${status}',
+              '$status',
               style: new TextStyle(
                 color: Colors.white,
                 fontSize: 20.0,
@@ -93,7 +90,7 @@ class _CallState extends State<Call> {
       ),
     );
 
-    Widget BottomContainer = new Container(
+    Widget bottomContainer = new Container(
       padding: EdgeInsets.only(bottom: 30.0),
       alignment: Alignment.bottomCenter,
       child: new Column(
@@ -150,9 +147,7 @@ class _CallState extends State<Call> {
         ? new StringeeVideoView(
             widget.callId,
             true,
-            color: Colors.white,
             alignment: Alignment.topRight,
-            isOverlay: true,
             isMirror: widget.isMirror,
             margin: EdgeInsets.only(top: 100.0, right: 25.0),
             height: 200.0,
@@ -165,8 +160,6 @@ class _CallState extends State<Call> {
         ? new StringeeVideoView(
             widget.callId,
             false,
-            color: Colors.blue,
-            isOverlay: false,
             isMirror: false,
             scalingType: ScalingType.fill,
           )
@@ -178,8 +171,8 @@ class _CallState extends State<Call> {
         children: <Widget>[
           remoteView,
           localView,
-          NameCalling,
-          BottomContainer,
+          nameCalling,
+          bottomContainer,
           ButtonSwitchCamera(
             isMirror: widget.isMirror,
           ),
@@ -231,22 +224,12 @@ class _CallState extends State<Call> {
     });
 
     if (widget.showIncomingUi) {
-      if (main.rejected) {
-        main.rejected = false;
-        _rejectCallTapped();
-      } else {
-        _stringeeCall.initAnswer().then((event) {
-          bool status = event['status'];
-          if (!status) {
-            clearDataEndDismiss();
-          } else {
-            if (main.answered) {
-              main.answered = false;
-              _acceptCallTapped();
-            }
-          }
-        });
-      }
+      _stringeeCall.initAnswer().then((event) {
+        bool status = event['status'];
+        if (!status) {
+          clearDataEndDismiss();
+        }
+      });
     } else {
       final parameters = {
         'from': widget.fromUserId,
@@ -311,22 +294,12 @@ class _CallState extends State<Call> {
     });
 
     if (widget.showIncomingUi) {
-      if (main.rejected) {
-        main.rejected = false;
-        _rejectCallTapped();
-      } else {
-        _stringeeCall2.initAnswer().then((event) {
-          bool status = event['status'];
-          if (!status) {
-            clearDataEndDismiss();
-          } else {
-            if (main.answered) {
-              main.answered = false;
-              _acceptCallTapped();
-            }
-          }
-        });
-      }
+      _stringeeCall2.initAnswer().then((event) {
+        bool status = event['status'];
+        if (!status) {
+          clearDataEndDismiss();
+        }
+      });
     } else {
       final parameters = {
         'from': widget.fromUserId,
@@ -565,7 +538,6 @@ class _ButtonSwitchCameraState extends State<ButtonSwitchCamera> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new Align(
       alignment: Alignment.topLeft,
       child: Padding(
@@ -628,7 +600,6 @@ class _ButtonSpeakerState extends State<ButtonSpeaker> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new GestureDetector(
       onTap: _toggleSpeaker,
       child: Image.asset(
@@ -685,7 +656,6 @@ class _ButtonMicroState extends State<ButtonMicro> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new GestureDetector(
       onTap: _toggleMicro,
       child: Image.asset(
@@ -742,7 +712,6 @@ class _ButtonVideoState extends State<ButtonVideo> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new GestureDetector(
       onTap: widget.isVideoEnable ? _toggleVideo : null,
       child: Image.asset(

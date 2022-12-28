@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
@@ -16,72 +19,65 @@ var token = 'PUT_YOUR_TOKEN_HERE';
 StringeeCall call;
 StringeeCall2 call2;
 
-StringeeNotification stringeeNotification = StringeeNotification();
 bool showIncomingCall = false;
-bool answered = false;
-bool rejected = false;
-
 String strUserId = "";
 
+@pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
-  print("Handling a background message: ${remoteMessage.data}");
+  await Firebase.initializeApp().whenComplete(() {
+    print("Handling a background message: ${remoteMessage.data}");
 
-  Map<dynamic, dynamic> _notiData = remoteMessage.data;
-  Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
+    Map<dynamic, dynamic> _notiData = remoteMessage.data;
+    Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
+    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    if (_data['callStatus'] == 'started') {
+      const AndroidInitializationSettings androidSettings =
+          AndroidInitializationSettings('@drawable/ic_noti');
+      final InitializationSettings initializationSettings =
+          InitializationSettings(android: androidSettings);
 
-  if (_data['callStatus'] == 'started') {
-    showNotification(_data['from']['alias'], _data['from']['number']);
-  } else if (_data['callStatus'] == 'ended') {
-    stringeeNotification.cancel(123456);
-  }
+      flutterLocalNotificationsPlugin
+          .initialize(initializationSettings)
+          .then((value) async {
+        if (value) {
+          /// Create channel for notification
+          const AndroidNotificationDetails androidPlatformChannelSpecifics =
+              AndroidNotificationDetails(
+            'your channel id', 'your channel name',
+            channelDescription: 'your channel description',
+            importance: Importance.max,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.call,
+
+            /// Set true for show App in lockScreen
+            fullScreenIntent: true,
+          );
+          const NotificationDetails platformChannelSpecifics =
+              NotificationDetails(android: androidPlatformChannelSpecifics);
+
+          /// Show notification
+          await flutterLocalNotificationsPlugin.show(
+            1234,
+            'Incoming Call from ${_data['from']['alias']}',
+            _data['from']['number'],
+            platformChannelSpecifics,
+          );
+        }
+      });
+    } else if (_data['callStatus'] == 'ended') {
+      flutterLocalNotificationsPlugin.cancel(1234);
+    }
+  });
 }
 
-void showNotification(String from, String number) {
-  /// Create channel for notification
-  NotificationChannel channel = new NotificationChannel(
-    "channelId",
-    "channelName",
-    "description",
-    importance: NotificationImportance.Max,
-  );
-  stringeeNotification.createChannel(channel);
-
-  /// Show notification
-  NotificationAndroid notification = new NotificationAndroid(
-      123456, channel.channelId,
-      fullScreenIntent: true,
-      category: NotificationCategory.Call,
-      priority: NotificationPriority.Max,
-      contentTitle: 'Incoming from $from',
-      contentText: number,
-      actions: [
-        new NotificationAction(id: 'answer', title: 'Answer'),
-        new NotificationAction(id: 'reject', title: 'Reject'),
-      ]);
-  stringeeNotification.showNotification(notification);
-}
-
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isAndroid)
     Firebase.initializeApp().whenComplete(() {
       print("completed");
       FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
     });
-
-  stringeeNotification.listenActionPress((actionId) async {
-    print('Stringee Notification action: $actionId');
-    stringeeNotification.cancel(123456);
-    switch (actionId) {
-      case 'answer':
-        answered = true;
-        break;
-      case 'reject':
-        rejected = true;
-        break;
-    }
-  });
-
   runApp(new MyApp());
 }
 
@@ -95,7 +91,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return _MyHomePageState();
   }
 }
@@ -107,7 +102,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      stringeeNotification.cancel(123456);
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      flutterLocalNotificationsPlugin.cancel(1234);
       isAppInBackground = false;
     } else if (state == AppLifecycleState.inactive) {
       isAppInBackground = true;
@@ -117,20 +114,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       if (common.client.hasConnected &&
           showIncomingCall &&
           Platform.isAndroid) {
-        if (rejected) {
-          if (call != null) {
-            call.reject();
-            call = null;
-            rejected = false;
-          }
-          if (call2 != null) {
-            call2.reject();
-            call2 = null;
-            rejected = false;
-          }
-        } else {
-          showCallScreen(call, call2);
-        }
+        showCallScreen(call, call2);
       }
     }
   }
@@ -143,7 +127,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   @override
   Future<void> initState() {
-    // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
@@ -189,11 +172,27 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   requestPermissions() async {
-    Map<Permission, PermissionStatus> statuses = await [
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    List<Permission> permissions = [
       Permission.camera,
       Permission.microphone,
-    ].request();
+    ];
+    if (androidInfo.version.sdkInt >= 31) {
+      permissions.add(Permission.bluetoothConnect);
+    }
+    Map<Permission, PermissionStatus> statuses = await permissions.request();
     print(statuses);
+
+    if (androidInfo.version.sdkInt >= 33) {
+      // Register permission for show notification in android 13
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          .requestPermission();
+    }
   }
 
   @override
@@ -288,30 +287,28 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   void handleIncomingCallEvent(StringeeCall stringeeCall) {
-    if (!isAppInBackground || !Platform.isAndroid) {
-      if (rejected) {
-        stringeeCall.reject();
-        rejected = false;
+    if (!Platform.isAndroid) {
+      showCallScreen(stringeeCall, null);
+    } else {
+      call = stringeeCall;
+      if (isAppInBackground) {
+        showIncomingCall = true;
       } else {
         showCallScreen(stringeeCall, null);
       }
-    } else {
-      showIncomingCall = true;
-      call = stringeeCall;
     }
   }
 
   void handleIncomingCall2Event(StringeeCall2 stringeeCall2) {
-    if (!isAppInBackground || !Platform.isAndroid) {
-      if (rejected) {
-        stringeeCall2.reject();
-        rejected = false;
+    if (!Platform.isAndroid) {
+      showCallScreen(null, stringeeCall2);
+    } else {
+      call2 = stringeeCall2;
+      if (isAppInBackground) {
+        showIncomingCall = true;
       } else {
         showCallScreen(null, stringeeCall2);
       }
-    } else {
-      showIncomingCall = true;
-      call2 = stringeeCall2;
     }
   }
 
@@ -340,7 +337,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 class MyForm extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-    // TODO: implement createState
     return _MyFormState();
   }
 }
@@ -348,9 +344,7 @@ class MyForm extends StatefulWidget {
 class _MyFormState extends State<MyForm> {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return new Form(
-//      key: _formKey,
       child: new Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -382,11 +376,9 @@ class _MyFormState extends State<MyForm> {
                         new Container(
                           height: 40.0,
                           width: 175.0,
-                          child: new RaisedButton(
-                            color: Colors.grey[300],
-                            textColor: Colors.black,
+                          child: new ElevatedButton(
                             onPressed: () {
-                              _CallTapped(false, StringeeObjectEventType.call);
+                              _callTapped(false, StringeeObjectEventType.call);
                             },
                             child: Text('CALL'),
                           ),
@@ -395,11 +387,9 @@ class _MyFormState extends State<MyForm> {
                           height: 40.0,
                           width: 175.0,
                           margin: EdgeInsets.only(top: 20.0),
-                          child: new RaisedButton(
-                            color: Colors.grey[300],
-                            textColor: Colors.black,
+                          child: new ElevatedButton(
                             onPressed: () {
-                              _CallTapped(true, StringeeObjectEventType.call);
+                              _callTapped(true, StringeeObjectEventType.call);
                             },
                             child: Text('VIDEOCALL'),
                           ),
@@ -412,12 +402,9 @@ class _MyFormState extends State<MyForm> {
                         new Container(
                           height: 40.0,
                           width: 175.0,
-                          child: new RaisedButton(
-                            color: Colors.grey[300],
-                            textColor: Colors.black,
-                            padding: EdgeInsets.only(left: 20.0, right: 20.0),
+                          child: new ElevatedButton(
                             onPressed: () {
-                              _CallTapped(false, StringeeObjectEventType.call2);
+                              _callTapped(false, StringeeObjectEventType.call2);
                             },
                             child: Text('CALL2'),
                           ),
@@ -426,12 +413,9 @@ class _MyFormState extends State<MyForm> {
                           height: 40.0,
                           width: 175.0,
                           margin: EdgeInsets.only(top: 20.0),
-                          child: new RaisedButton(
-                            color: Colors.grey[300],
-                            textColor: Colors.black,
-                            padding: EdgeInsets.only(left: 20.0, right: 20.0),
+                          child: new ElevatedButton(
                             onPressed: () {
-                              _CallTapped(true, StringeeObjectEventType.call2);
+                              _callTapped(true, StringeeObjectEventType.call2);
                             },
                             child: Text('VIDEOCALL2'),
                           ),
@@ -454,7 +438,7 @@ class _MyFormState extends State<MyForm> {
     });
   }
 
-  void _CallTapped(bool isVideoCall, StringeeObjectEventType callType) {
+  void _callTapped(bool isVideoCall, StringeeObjectEventType callType) {
     if (strUserId.isEmpty || !common.client.hasConnected) return;
 
     Navigator.push(
