@@ -162,9 +162,7 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
                     ? _androidCallManager.callId
                     : _iOSCallManager.syncCall.callId,
                 true,
-                color: Colors.white,
                 alignment: Alignment.topRight,
-                isOverlay: true,
                 margin: EdgeInsets.only(top: 100.0, right: 25.0),
                 height: 200.0,
                 width: 150.0,
@@ -180,8 +178,6 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
                 ? _androidCallManager.callId
                 : _iOSCallManager.syncCall.callId,
             false,
-            color: Colors.blue,
-            isOverlay: false,
             isMirror: false,
             scalingType: ScalingType.fill,
           )

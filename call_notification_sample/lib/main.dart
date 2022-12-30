@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -19,62 +20,61 @@ var user1 = 'PUT_YOUR_TOKEN_HERE';
 
 String toUserId = "";
 bool isAndroid = Platform.isAndroid;
+bool showIncomingCall = false;
 AndroidCallManager _androidCallManager = AndroidCallManager.shared;
 IOSCallManager _iOSCallManager = IOSCallManager.shared;
 
 /// Nhận và hiện notification khi app ở dưới background hoặc đã bị kill ở android
+@pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
-  print("Handling a background message: ${remoteMessage.data}");
+  await Firebase.initializeApp().whenComplete(() {
+    print("Handling a background message: ${remoteMessage.data}");
 
-  Map<dynamic, dynamic> _notiData = remoteMessage.data;
-  Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
+    Map<dynamic, dynamic> _notiData = remoteMessage.data;
+    Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
+    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+    if (_data['callStatus'] == 'started') {
+      const AndroidInitializationSettings androidSettings =
+          AndroidInitializationSettings('@drawable/ic_noti');
+      final InitializationSettings initializationSettings =
+          InitializationSettings(android: androidSettings);
 
-  const AndroidInitializationSettings androidSettings =
-      AndroidInitializationSettings('@drawable/ic_noti');
-  final IOSInitializationSettings iOSSettings = IOSInitializationSettings();
-  final MacOSInitializationSettings macOSSettings =
-      MacOSInitializationSettings();
-  final InitializationSettings initializationSettings = InitializationSettings(
-      android: androidSettings, iOS: iOSSettings, macOS: macOSSettings);
-  await InstanceManager.localNotifications
-      .initialize(
-    initializationSettings,
-    onSelectNotification: null,
-  )
-      .then((value) async {
-    if (value) {
-      print("Stringee notification:" + _data.toString());
-      if (_data['callStatus'] == 'started') {
-        /// Create channel for notification
-        const AndroidNotificationDetails androidPlatformChannelSpecifics =
-            AndroidNotificationDetails(
-          'your channel id',
-          'your channel name',
-          'your channel description',
-          importance: Importance.max,
-          priority: Priority.high,
-          fullScreenIntent: true,
+      flutterLocalNotificationsPlugin
+          .initialize(initializationSettings)
+          .then((value) async {
+        if (value) {
+          /// Create channel for notification
+          const AndroidNotificationDetails androidPlatformChannelSpecifics =
+              AndroidNotificationDetails(
+            'your channel id', 'your channel name',
+            channelDescription: 'your channel description',
+            importance: Importance.high,
+            priority: Priority.high,
+            category: AndroidNotificationCategory.call,
 
-          /// Set true for show App in lockScreen
-        );
-        const NotificationDetails platformChannelSpecifics =
-            NotificationDetails(android: androidPlatformChannelSpecifics);
+            /// Set true for show App in lockScreen
+            fullScreenIntent: true,
+          );
+          const NotificationDetails platformChannelSpecifics =
+              NotificationDetails(android: androidPlatformChannelSpecifics);
 
-        /// Show notification
-        await InstanceManager.localNotifications.show(
-          0,
-          'Incoming Call',
-          'from ' + _data['from']['alias'],
-          platformChannelSpecifics,
-        );
-      } else if (_data['callStatus'] == 'ended') {
-        InstanceManager.localNotifications.cancel(0);
-      }
+          /// Show notification
+          await flutterLocalNotificationsPlugin.show(
+            1234,
+            'Incoming Call from ${_data['from']['alias']}',
+            _data['from']['number'],
+            platformChannelSpecifics,
+          );
+        }
+      });
+    } else if (_data['callStatus'] == 'ended') {
+      flutterLocalNotificationsPlugin.cancel(1234);
     }
   });
 }
 
-Future<void> main() async {
+main() {
   WidgetsFlutterBinding.ensureInitialized();
   if (isAndroid)
     Firebase.initializeApp().whenComplete(() {
@@ -170,11 +170,27 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   requestPermissions() async {
-    Map<Permission, PermissionStatus> statuses = await [
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    List<Permission> permissions = [
       Permission.camera,
       Permission.microphone,
-    ].request();
+    ];
+    if (androidInfo.version.sdkInt >= 31) {
+      permissions.add(Permission.bluetoothConnect);
+    }
+    Map<Permission, PermissionStatus> statuses = await permissions.request();
     print(statuses);
+
+    if (androidInfo.version.sdkInt >= 33) {
+      // Register permission for show notification in android 13
+      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+          FlutterLocalNotificationsPlugin();
+      flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          .requestPermission();
+    }
   }
 
   Future<void> registerPushWithStringeeServer() async {
