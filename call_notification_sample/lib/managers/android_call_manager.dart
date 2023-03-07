@@ -6,12 +6,12 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'instance_manager.dart' as InstanceManager;
 
 class AndroidCallManager with WidgetsBindingObserver {
-  static AndroidCallManager _instance;
-  BuildContext _context;
-  GlobalKey<CallScreenState> callScreenKey;
-  StringeeCall _call;
-  StringeeCall2 _call2;
-  CallInfo _callInfo;
+  static AndroidCallManager? _instance;
+  late BuildContext _context;
+  GlobalKey<CallScreenState>? callScreenKey;
+  StringeeCall? _call;
+  StringeeCall2? _call2;
+  CallInfo? _callInfo;
 
   bool _isAppInBackground = false;
   bool _showIncomingCall = false;
@@ -24,12 +24,12 @@ class AndroidCallManager with WidgetsBindingObserver {
   bool _useCall2 = false;
   bool _isInCall = false;
 
-  String _callId = "";
+  String? _callId = "";
 
-  StringeeMediaState _mediaState;
-  StringeeSignalingState _signalingState;
+  StringeeMediaState? _mediaState;
+  StringeeSignalingState? _signalingState;
 
-  static AndroidCallManager get shared {
+  static AndroidCallManager? get shared {
     if (_instance == null) {
       _instance = AndroidCallManager._internal();
     }
@@ -60,16 +60,15 @@ class AndroidCallManager with WidgetsBindingObserver {
     _callInfo = callInfo;
   }
 
-  StringeeCall get stringeeCall => _call;
+  StringeeCall? get stringeeCall => _call;
 
-  StringeeCall2 get stringeeCall2 => _call2;
+  StringeeCall2? get stringeeCall2 => _call2;
 
   bool get showIncomingCall => _showIncomingCall;
 
-  String get callId => _callId;
+  String? get callId => _callId;
 
   void setContext(BuildContext context) {
-    assert(context != null);
     _context = context;
   }
 
@@ -93,7 +92,7 @@ class AndroidCallManager with WidgetsBindingObserver {
       _isAppInBackground = true;
     }
 
-    if (state == AppLifecycleState.resumed && InstanceManager.client != null) {
+    if (state == AppLifecycleState.resumed) {
       if (InstanceManager.client.hasConnected && _showIncomingCall) {
         showCallScreen();
       }
@@ -101,21 +100,21 @@ class AndroidCallManager with WidgetsBindingObserver {
   }
 
   void handleIncomingCallEvent(StringeeCall call, BuildContext context) {
-    print("handleIncomingCallEvent, callId: " + call.id);
+    print("handleIncomingCallEvent, callId: " + call.id!);
     _call = call;
     if (_isInCall) {
       reject();
     } else {
       _showIncomingCall = true;
-      _isVideoCall = _call.isVideoCall;
-      _isSpeaker = _call.isVideoCall;
+      _isVideoCall = _call!.isVideoCall;
+      _isSpeaker = _call!.isVideoCall;
       _preSpeaker = _isSpeaker;
-      _isVideoEnable = _call.isVideoCall;
+      _isVideoEnable = _call!.isVideoCall;
       _useCall2 = false;
-      _callId = _call.id;
+      _callId = _call!.id;
       addListenerForCall();
 
-      _call.initAnswer().then((event) {
+      _call!.initAnswer().then((event) {
         bool status = event['status'];
         if (!status) {
           clearDataEndDismiss();
@@ -131,21 +130,21 @@ class AndroidCallManager with WidgetsBindingObserver {
   }
 
   void handleIncomingCall2Event(StringeeCall2 call2, BuildContext context) {
-    print("handleIncomingCall2Event, callId: " + call2.id);
+    print("handleIncomingCall2Event, callId: " + call2.id!);
     _call2 = call2;
     if (_isInCall) {
       reject();
     } else {
       _showIncomingCall = true;
-      _isVideoCall = _call2.isVideoCall;
-      _isSpeaker = _call2.isVideoCall;
+      _isVideoCall = _call2!.isVideoCall;
+      _isSpeaker = _call2!.isVideoCall;
       _preSpeaker = _isSpeaker;
-      _isVideoEnable = _call2.isVideoCall;
+      _isVideoEnable = _call2!.isVideoCall;
       _useCall2 = true;
-      _callId = _call2.id;
+      _callId = _call2!.id;
       addListenerForCall();
 
-      _call2.initAnswer().then((event) {
+      _call2!.initAnswer().then((event) {
         bool status = event['status'];
         if (!status) {
           clearDataEndDismiss();
@@ -164,8 +163,8 @@ class AndroidCallManager with WidgetsBindingObserver {
     callScreenKey = GlobalKey<CallScreenState>();
     CallScreen callScreen = CallScreen(
       key: callScreenKey,
-      fromUserId: _useCall2 ? _call2.to : _call.to,
-      toUserId: _useCall2 ? _call2.from : _call.from,
+      fromUserId: _useCall2 ? _call2!.to : _call!.to,
+      toUserId: _useCall2 ? _call2!.from : _call!.from,
       isVideo: _isVideoCall,
       useCall2: _useCall2,
     );
@@ -177,8 +176,8 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void addListenerForCall() {
     if (_useCall2) {
-      if (!_call2.eventStreamController.hasListener) {
-        _call2.eventStreamController.stream.listen((event) {
+      if (!_call2!.eventStreamController.hasListener) {
+        _call2!.eventStreamController.stream.listen((event) {
           Map<dynamic, dynamic> map = event;
           switch (map['eventType']) {
             case StringeeCall2Events.didChangeSignalingState:
@@ -208,8 +207,8 @@ class AndroidCallManager with WidgetsBindingObserver {
         });
       }
     } else {
-      if (!_call.eventStreamController.hasListener) {
-        _call.eventStreamController.stream.listen((event) {
+      if (!_call!.eventStreamController.hasListener) {
+        _call!.eventStreamController.stream.listen((event) {
           Map<dynamic, dynamic> map = event;
           switch (map['eventType']) {
             case StringeeCallEvents.didChangeSignalingState:
@@ -243,10 +242,10 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   /// Handle event for call
 
-  void handleSignalingStateChangeEvent(StringeeSignalingState state) {
+  void handleSignalingStateChangeEvent(StringeeSignalingState? state) {
     print('handleSignalingStateChangeEvent - $state');
     _signalingState = state;
-    _callInfo.onStatusChange(state.toString().split('.')[1]);
+    _callInfo!.onStatusChange(state.toString().split('.')[1]);
     switch (state) {
       case StringeeSignalingState.calling:
         break;
@@ -256,25 +255,25 @@ class AndroidCallManager with WidgetsBindingObserver {
         if (_mediaState == StringeeMediaState.connected) {
           if (_useCall2) {
             if (_call2 != null) {
-              _call2.setSpeakerphoneOn(_isSpeaker);
+              _call2!.setSpeakerphoneOn(_isSpeaker);
               if (_callInfo != null) {
-                _callInfo.onSpeakerState(_isSpeaker);
+                _callInfo!.onSpeakerState(_isSpeaker);
               }
-              if (_call2.isVideoCall && _hasLocalStream) {
+              if (_call2!.isVideoCall && _hasLocalStream) {
                 if (_callInfo != null) {
-                  _callInfo.onReceiveLocalStream();
+                  _callInfo!.onReceiveLocalStream();
                 }
               }
             }
           } else {
             if (_call != null) {
-              _call.setSpeakerphoneOn(_isSpeaker);
+              _call!.setSpeakerphoneOn(_isSpeaker);
               if (_callInfo != null) {
-                _callInfo.onSpeakerState(_isSpeaker);
+                _callInfo!.onSpeakerState(_isSpeaker);
               }
-              if (_call.isVideoCall && _hasLocalStream) {
+              if (_call!.isVideoCall && _hasLocalStream) {
                 if (_callInfo != null) {
-                  _callInfo.onReceiveLocalStream();
+                  _callInfo!.onReceiveLocalStream();
                 }
               }
             }
@@ -292,28 +291,28 @@ class AndroidCallManager with WidgetsBindingObserver {
     }
   }
 
-  void handleMediaStateChangeEvent(StringeeMediaState state) {
+  void handleMediaStateChangeEvent(StringeeMediaState? state) {
     print('handleMediaStateChangeEvent - $state - $_signalingState - $_isSpeaker');
     _mediaState = state;
-    _callInfo.onStatusChange(state.toString().split('.')[1]);
+    _callInfo!.onStatusChange(state.toString().split('.')[1]);
     switch (state) {
       case StringeeMediaState.connected:
         if (_signalingState == StringeeSignalingState.answered &&
-            (_useCall2 ? _call2.isVideoCall : _call.isVideoCall) &&
+            (_useCall2 ? _call2!.isVideoCall : _call!.isVideoCall) &&
             _hasLocalStream) {
           if (_callInfo != null) {
-            _callInfo.onReceiveLocalStream();
+            _callInfo!.onReceiveLocalStream();
           }
         }
 
         if (_signalingState == StringeeSignalingState.answered){
           if (_useCall2) {
             if (_call2 != null) {
-              _call2.setSpeakerphoneOn(_isSpeaker);
+              _call2!.setSpeakerphoneOn(_isSpeaker);
             }
           } else {
             if (_call != null) {
-              _call.setSpeakerphoneOn(_isSpeaker);
+              _call!.setSpeakerphoneOn(_isSpeaker);
             }
           }
         }
@@ -325,33 +324,33 @@ class AndroidCallManager with WidgetsBindingObserver {
     }
   }
 
-  void handleReceiveCallInfoEvent(Map<dynamic, dynamic> info) {
+  void handleReceiveCallInfoEvent(Map<dynamic, dynamic>? info) {
     print('handleReceiveCallInfoEvent - $info');
   }
 
-  void handleHandleOnAnotherDeviceEvent(StringeeSignalingState state) {
+  void handleHandleOnAnotherDeviceEvent(StringeeSignalingState? state) {
     print('handleHandleOnAnotherDeviceEvent - $state');
   }
 
-  void handleReceiveLocalStreamEvent(String callId) {
+  void handleReceiveLocalStreamEvent(String? callId) {
     print('handleReceiveLocalStreamEvent - $callId');
     _hasLocalStream = true;
   }
 
-  void handleReceiveRemoteStreamEvent(String callId) {
+  void handleReceiveRemoteStreamEvent(String? callId) {
     print('handleReceiveRemoteStreamEvent - $callId');
     if (_useCall2) {
-      if (_call2.isVideoCall) {
-        _callInfo.onReceiveRemoteStream();
+      if (_call2!.isVideoCall) {
+        _callInfo!.onReceiveRemoteStream();
       }
     } else {
-      if (_call.isVideoCall) {
-        _callInfo.onReceiveRemoteStream();
+      if (_call!.isVideoCall) {
+        _callInfo!.onReceiveRemoteStream();
       }
     }
   }
 
-  void handleChangeAudioDeviceEvent(AudioDevice audioDevice) {
+  void handleChangeAudioDeviceEvent(AudioDevice? audioDevice) {
     print('handleChangeAudioDeviceEvent - $audioDevice');
     switch (audioDevice) {
       case AudioDevice.speakerPhone:
@@ -359,16 +358,16 @@ class AndroidCallManager with WidgetsBindingObserver {
         _isSpeaker = _preSpeaker;
         if (_useCall2) {
           if (_call2 != null) {
-            _call2.setSpeakerphoneOn(_isSpeaker);
+            _call2!.setSpeakerphoneOn(_isSpeaker);
             if (_callInfo != null) {
-              _callInfo.onSpeakerState(_isSpeaker);
+              _callInfo!.onSpeakerState(_isSpeaker);
             }
           }
         } else {
           if (_call != null) {
-            _call.setSpeakerphoneOn(_isSpeaker);
+            _call!.setSpeakerphoneOn(_isSpeaker);
             if (_callInfo != null) {
-              _callInfo.onSpeakerState(_isSpeaker);
+              _callInfo!.onSpeakerState(_isSpeaker);
             }
           }
         }
@@ -379,21 +378,22 @@ class AndroidCallManager with WidgetsBindingObserver {
         _isSpeaker = false;
         if (_useCall2) {
           if (_call2 != null) {
-            _call2.setSpeakerphoneOn(_isSpeaker);
+            _call2!.setSpeakerphoneOn(_isSpeaker);
             if (_callInfo != null) {
-              _callInfo.onSpeakerState(_isSpeaker);
+              _callInfo!.onSpeakerState(_isSpeaker);
             }
           }
         } else {
           if (_call != null) {
-            _call.setSpeakerphoneOn(_isSpeaker);
+            _call!.setSpeakerphoneOn(_isSpeaker);
             if (_callInfo != null) {
-              _callInfo.onSpeakerState(_isSpeaker);
+              _callInfo!.onSpeakerState(_isSpeaker);
             }
           }
         }
         break;
       case AudioDevice.none:
+      default:
         print('handleChangeAudioDeviceEvent - non audio devices connected');
         break;
     }
@@ -401,13 +401,13 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void makeCall(Map<dynamic, dynamic> parameters) {
     if (_useCall2) {
-      _call2.makeCall(parameters).then((result) {
-        _callId = _call2.id;
+      _call2!.makeCall(parameters).then((result) {
+        _callId = _call2!.id;
         bool status = result['status'];
-        int code = result['code'];
-        String message = result['message'];
+        int? code = result['code'];
+        String? message = result['message'];
         print(
-            'MakeCall CallBack --- $status - $code - $message - ${_call2.id} - ${_call2.from} - ${_call2.to}');
+            'MakeCall CallBack --- $status - $code - $message - ${_call2!.id} - ${_call2!.from} - ${_call2!.to}');
 
         _isInCall = status;
         if (!status) {
@@ -415,13 +415,13 @@ class AndroidCallManager with WidgetsBindingObserver {
         }
       });
     } else {
-      _call.makeCall(parameters).then((result) {
-        _callId = _call.id;
+      _call!.makeCall(parameters).then((result) {
+        _callId = _call!.id;
         bool status = result['status'];
-        int code = result['code'];
-        String message = result['message'];
+        int? code = result['code'];
+        String? message = result['message'];
         print(
-            'MakeCall CallBack --- $status - $code - $message - ${_call.id} - ${_call.from} - ${_call.to}');
+            'MakeCall CallBack --- $status - $code - $message - ${_call!.id} - ${_call!.from} - ${_call!.to}');
         _isInCall = status;
         if (!status) {
           clearDataEndDismiss();
@@ -432,7 +432,7 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   Future<Map<dynamic, dynamic>> answer() {
     if (_useCall2) {
-      return _call2.answer().then((result) {
+      return _call2!.answer().then((result) {
         bool status = result['status'];
         if (status) {
           _signalingState = StringeeSignalingState.answered;
@@ -440,7 +440,7 @@ class AndroidCallManager with WidgetsBindingObserver {
         return result;
       });
     } else {
-      return _call.answer().then((result) {
+      return _call!.answer().then((result) {
         bool status = result['status'];
         if (status) {
           _signalingState = StringeeSignalingState.answered;
@@ -455,12 +455,12 @@ class AndroidCallManager with WidgetsBindingObserver {
 
     if (_useCall2) {
       if (_call2 != null) {
-        _call2.destroy();
+        _call2!.destroy();
         _call2 = null;
       }
     } else {
       if (_call != null) {
-        _call.destroy();
+        _call!.destroy();
         _call = null;
       }
     }
@@ -478,20 +478,20 @@ class AndroidCallManager with WidgetsBindingObserver {
 
     _callId = "";
 
-    if (callScreenKey != null && callScreenKey.currentState != null) {
-      callScreenKey.currentState.dismiss();
+    if (callScreenKey != null && callScreenKey!.currentState != null) {
+      callScreenKey!.currentState!.dismiss();
       callScreenKey = null;
     }
   }
 
   void switchCamera() {
     if (_useCall2) {
-      _call2.switchCamera().then((result) {
+      _call2!.switchCamera().then((result) {
         bool status = result['status'];
         if (status) {}
       });
     } else {
-      _call.switchCamera().then((result) {
+      _call!.switchCamera().then((result) {
         bool status = result['status'];
         if (status) {}
       });
@@ -500,13 +500,13 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void hangup() {
     if (_useCall2) {
-      _call2.hangup().then((result) {
+      _call2!.hangup().then((result) {
         if (result['status']) {
           clearDataEndDismiss();
         }
       });
     } else {
-      _call.hangup().then((result) {
+      _call!.hangup().then((result) {
         if (result['status']) {
           clearDataEndDismiss();
         }
@@ -516,13 +516,13 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void reject() {
     if (_useCall2) {
-      _call2.reject().then((result) {
+      _call2!.reject().then((result) {
         if (result['status']) {
           clearDataEndDismiss();
         }
       });
     } else {
-      _call.reject().then((result) {
+      _call!.reject().then((result) {
         if (result['status']) {
           clearDataEndDismiss();
         }
@@ -533,20 +533,20 @@ class AndroidCallManager with WidgetsBindingObserver {
   void setSpeakerphoneOn() {
     _isSpeaker = !_isSpeaker;
     if (_useCall2) {
-      _call2.setSpeakerphoneOn(_isSpeaker).then((result) {
+      _call2!.setSpeakerphoneOn(_isSpeaker).then((result) {
         bool status = result['status'];
         if (status) {
           if (_callInfo != null) {
-            _callInfo.onSpeakerState(_isSpeaker);
+            _callInfo!.onSpeakerState(_isSpeaker);
           }
         }
       });
     } else {
-      _call.setSpeakerphoneOn(_isSpeaker).then((result) {
+      _call!.setSpeakerphoneOn(_isSpeaker).then((result) {
         bool status = result['status'];
         if (status) {
           if (_callInfo != null) {
-            _callInfo.onSpeakerState(_isSpeaker);
+            _callInfo!.onSpeakerState(_isSpeaker);
           }
         }
       });
@@ -555,22 +555,22 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void mute() {
     if (_useCall2) {
-      _call2.mute(!_isMute).then((result) {
+      _call2!.mute(!_isMute).then((result) {
         bool status = result['status'];
         if (status) {
           _isMute = !_isMute;
           if (_callInfo != null) {
-            _callInfo.onMuteState(_isMute);
+            _callInfo!.onMuteState(_isMute);
           }
         }
       });
     } else {
-      _call.mute(!_isMute).then((result) {
+      _call!.mute(!_isMute).then((result) {
         bool status = result['status'];
         if (status) {
           _isMute = !_isMute;
           if (_callInfo != null) {
-            _callInfo.onMuteState(_isMute);
+            _callInfo!.onMuteState(_isMute);
           }
         }
       });
@@ -579,22 +579,22 @@ class AndroidCallManager with WidgetsBindingObserver {
 
   void enableVideo() {
     if (_useCall2) {
-      _call2.enableVideo(!_isVideoEnable).then((result) {
+      _call2!.enableVideo(!_isVideoEnable).then((result) {
         bool status = result['status'];
         if (status) {
           _isVideoEnable = !_isVideoEnable;
           if (_callInfo != null) {
-            _callInfo.onVideoState(_isVideoEnable);
+            _callInfo!.onVideoState(_isVideoEnable);
           }
         }
       });
     } else {
-      _call.enableVideo(!_isVideoEnable).then((result) {
+      _call!.enableVideo(!_isVideoEnable).then((result) {
         bool status = result['status'];
         if (status) {
           _isVideoEnable = !_isVideoEnable;
           if (_callInfo != null) {
-            _callInfo.onVideoState(_isVideoEnable);
+            _callInfo!.onVideoState(_isVideoEnable);
           }
         }
       });

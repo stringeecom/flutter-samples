@@ -21,8 +21,8 @@ var user1 = 'PUT_YOUR_TOKEN_HERE';
 String toUserId = "";
 bool isAndroid = Platform.isAndroid;
 bool showIncomingCall = false;
-AndroidCallManager _androidCallManager = AndroidCallManager.shared;
-IOSCallManager _iOSCallManager = IOSCallManager.shared;
+AndroidCallManager? _androidCallManager = AndroidCallManager.shared;
+IOSCallManager? _iOSCallManager = IOSCallManager.shared;
 
 /// Nhận và hiện notification khi app ở dưới background hoặc đã bị kill ở android
 @pragma('vm:entry-point')
@@ -43,7 +43,7 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
       flutterLocalNotificationsPlugin
           .initialize(initializationSettings)
           .then((value) async {
-        if (value) {
+        if (value!) {
           /// Create channel for notification
           const AndroidNotificationDetails androidPlatformChannelSpecifics =
               AndroidNotificationDetails(
@@ -100,29 +100,29 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  MyHomePage({Key? key, this.title}) : super(key: key);
 
-  final String title;
+  final String? title;
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String myUserId = "";
+  String? myUserId = "";
 
   @override
   void initState() {
     super.initState();
 
     if (isAndroid) {
-      _androidCallManager.setContext(context);
+      _androidCallManager!.setContext(context);
 
       ///cấp quyền truy cập với android
       requestPermissions();
     } else {
       /// Cấu hình thư viện để nhận push notification và sử dụng Callkit để show giao diện call native của iOS
-      _iOSCallManager.configureCallKeep();
+      _iOSCallManager!.configureCallKeep();
     }
 
     /// Lắng nghe sự kiện của StringeeClient(kết nối, cuộc gọi đến...)
@@ -146,19 +146,19 @@ class _MyHomePageState extends State<MyHomePage> {
           handleDidReceiveCustomMessageEvent(map['body']);
           break;
         case StringeeClientEvents.incomingCall:
-          StringeeCall call = map['body'];
+          StringeeCall? call = map['body'];
           if (isAndroid) {
-            _androidCallManager.handleIncomingCallEvent(call, context);
+            _androidCallManager!.handleIncomingCallEvent(call!, context);
           } else {
-            _iOSCallManager.handleIncomingCallEvent(call, context);
+            _iOSCallManager!.handleIncomingCallEvent(call!, context);
           }
           break;
         case StringeeClientEvents.incomingCall2:
-          StringeeCall2 call = map['body'];
+          StringeeCall2? call = map['body'];
           if (isAndroid) {
-            _androidCallManager.handleIncomingCall2Event(call, context);
+            _androidCallManager!.handleIncomingCall2Event(call!, context);
           } else {
-            _iOSCallManager.handleIncomingCall2Event(call, context);
+            _iOSCallManager!.handleIncomingCall2Event(call!, context);
           }
           break;
         default:
@@ -188,7 +188,7 @@ class _MyHomePageState extends State<MyHomePage> {
           FlutterLocalNotificationsPlugin();
       flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+              AndroidFlutterLocalNotificationsPlugin>()!
           .requestPermission();
     }
   }
@@ -198,14 +198,14 @@ class _MyHomePageState extends State<MyHomePage> {
       Stream<String> tokenRefreshStream =
           FirebaseMessaging.instance.onTokenRefresh;
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool registered = (prefs.getBool("register") == null)
+      bool? registered = (prefs.getBool("register") == null)
           ? false
           : prefs.getBool("register");
 
       ///kiểm tra đã register push chưa
       if (registered != null && !registered) {
         FirebaseMessaging.instance.getToken().then((token) {
-          InstanceManager.client.registerPush(token).then((value) {
+          InstanceManager.client.registerPush(token!).then((value) {
             print('Register push ' + value['message']);
             if (value['status']) {
               prefs.setBool("register", true);
@@ -219,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
       tokenRefreshStream.listen((token) {
         ///Xóa token cũ
         InstanceManager.client
-            .unregisterPush(prefs.getString("token"))
+            .unregisterPush(prefs.getString("token")!)
             .then((value) {
           print('Unregister push ' + value['message']);
           if (value['status']) {
@@ -237,7 +237,7 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       });
     } else {
-      _iOSCallManager.registerPushWithStringeeServer();
+      _iOSCallManager!.registerPushWithStringeeServer();
     }
   }
 
@@ -246,7 +246,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void handleDidConnectEvent() {
     print("handleDidConnectEvent");
     if (!isAndroid) {
-      _iOSCallManager.startTimeoutForIncomingCall();
+      _iOSCallManager!.startTimeoutForIncomingCall();
     }
 
     setState(() {
@@ -259,7 +259,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void handleDiddisconnectEvent() {
     print("handleDiddisconnectEvent");
     if (!isAndroid) {
-      _iOSCallManager.stopTimeoutForIncomingCall();
+      _iOSCallManager!.stopTimeoutForIncomingCall();
     }
 
     setState(() {
@@ -267,7 +267,7 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  void handleDidFailWithErrorEvent(int code, String message) {
+  void handleDidFailWithErrorEvent(int? code, String message) {
     print('code: ' + code.toString() + ', message: ' + message);
   }
 
@@ -397,9 +397,9 @@ class _ActionFormState extends State<ActionForm> {
 
     GlobalKey<CallScreenState> callScreenKey = GlobalKey<CallScreenState>();
     if (isAndroid) {
-      _androidCallManager.callScreenKey = callScreenKey;
+      _androidCallManager!.callScreenKey = callScreenKey;
     } else {
-      _iOSCallManager.callScreenKey = callScreenKey;
+      _iOSCallManager!.callScreenKey = callScreenKey;
     }
 
     CallScreen callScreen = CallScreen(
