@@ -290,6 +290,9 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }, onIncomingCall2: () {
       if (Platform.isIOS ||
           (_isPermissionGranted && !ClientManager().isAppInBackground)) {
+        if (isAnswerFromPush) {
+          ClientManager().callManager!.answer();
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
