@@ -22,7 +22,7 @@ class ClientManager {
 
   bool isInCall = false;
   String token =
-      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE2OTIwNjg3ODciLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNjk0NjYwNzg3LCJ1c2VySWQiOiJhbmRyb2lkMSJ9.8NRvdksk1vixdFElonUpuMwqM4BOhWYkamua1naEqts';
+      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE2OTIwNzE3MTIiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNjk0NjYzNzEyLCJ1c2VySWQiOiJhbmRyb2lkMiJ9.H6jcDnY1bzPWK2deFlZtZpJiuw-zCnoPF4lPoefmMJU';
   bool isAppInBackground = false;
   bool rejectFromPush = false;
   ConnectionListener? _listener;

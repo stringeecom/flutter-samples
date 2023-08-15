@@ -15,7 +15,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'call.dart';
 
@@ -65,13 +64,6 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
     }
 
     if (data['callStatus'] == 'started') {
-      StringeeNotification.instance.createChannel(NotificationChannel(
-        Constants.channelId,
-        Constants.channelName,
-        Constants.channelDescription,
-        importance: NotificationImportance.Max,
-      ));
-
       /// Create channel for notification
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
