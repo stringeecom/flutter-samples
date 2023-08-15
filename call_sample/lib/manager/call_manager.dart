@@ -381,7 +381,7 @@ class CallManager {
     if (_isStringeeCall) {
       _stringeeCall!.mute(_isMicOn).then(handleMuteResult);
     } else {
-      _stringeeCall!.mute(_isMicOn).then(handleMuteResult);
+      _stringeeCall2!.mute(_isMicOn).then(handleMuteResult);
     }
   }
 

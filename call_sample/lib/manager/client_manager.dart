@@ -11,7 +11,7 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import '../constants/constants.dart';
 
 class ClientManager {
-  ClientManager._privateConstructor() ;
+  ClientManager._privateConstructor();
 
   static ClientManager? _instance;
 
@@ -22,7 +22,7 @@ class ClientManager {
 
   bool isInCall = false;
   String token =
-      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE2OTIwNzE3MTIiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNjk0NjYzNzEyLCJ1c2VySWQiOiJhbmRyb2lkMiJ9.H6jcDnY1bzPWK2deFlZtZpJiuw-zCnoPF4lPoefmMJU';
+      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE2OTIwNzQ2NjYiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNjk0NjY2NjY2LCJ1c2VySWQiOiJhbmRyb2lkMSJ9.e8W4shFr22g3m5fCT6Q9QDmY1dtnoATkr_VjRbYH0H4';
   bool isAppInBackground = false;
   bool rejectFromPush = false;
   ConnectionListener? _listener;
@@ -44,6 +44,8 @@ class ClientManager {
         }
         stringeeClient!.disconnect();
         release();
+      } else if (dataSend['action'] == Constants.actionRejectFromNotification) {
+        callManager!.endCall(false);
       }
     });
   }

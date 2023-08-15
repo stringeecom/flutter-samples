@@ -41,6 +41,15 @@ void notificationTapBackground(
         'action': Constants.actionRejectFromNotification,
       };
       clientServer.send(dataSend);
+    } else {
+      SendPort? pushServer =
+      IsolateNameServer.lookupPortByName(Constants.serverPushName);
+      if (pushServer != null) {
+        Map<dynamic, dynamic> dataSend = {
+          'action': Constants.actionRejectFromNotification,
+        };
+        pushServer.send(dataSend);
+      }
     }
   }
 }
