@@ -155,6 +155,4 @@ class ClientManager {
     }
     ClientManager._instance = null;
   }
-
-  void releaseClientManagerFromFirebase() {}
 }
