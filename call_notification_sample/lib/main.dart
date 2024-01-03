@@ -16,7 +16,7 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'managers/instance_manager.dart' as InstanceManager;
 import 'screens/call_screen.dart';
 
-var user1 = 'PUT_YOUR_TOKEN_HERE';
+var user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDM3MzIzNzMiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzA2MzI0MzczLCJ1c2VySWQiOiJpb3MwMDIifQ.W6U3T0h3Gn_drsCyxbhHh_QNDitrhOXYNb3AFbv_1wA';
 
 String toUserId = "";
 bool isAndroid = Platform.isAndroid;

@@ -335,6 +335,8 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   @override
   void onReceiveLocalStream() {
+    setState(() => _hasLocalStream = false
+    );
     setState(() {
       _hasLocalStream = true;
     });
@@ -342,6 +344,9 @@ class CallScreenState extends State<CallScreen> implements CallInfo {
 
   @override
   void onReceiveRemoteStream() {
+    setState(() {
+      _hasRemoteStream = false;
+    });
     setState(() {
       _hasRemoteStream = true;
     });

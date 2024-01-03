@@ -116,19 +116,16 @@ class IOSCallManager with WidgetsBindingObserver {
     });
   }
 
-  void handleIncomingCallEvent(StringeeCall call, BuildContext context) {
+  void handleIncomingCallEvent(StringeeCall call, BuildContext context) async {
     print("handleIncomingCallEvent, callId: " + call.id!);
 
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall(call);
-      syncCall!.uuid = genUUID();
-
       // Show callkit
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
 
+      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.fromAlias!);
       // Show callScreen
       showCallScreen(context);
 
@@ -172,18 +169,17 @@ class IOSCallManager with WidgetsBindingObserver {
     syncCall!.answerIfConditionPassed();
   }
 
-  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) {
+  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) async {
     print("handleIncomingCall2Event, callId: " + call.id!);
 
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall2(call);
-      syncCall!.uuid = genUUID();
+
 
       // Show callkit
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
+      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.fromAlias!);
 
       // Show callScreen
       showCallScreen(context);
