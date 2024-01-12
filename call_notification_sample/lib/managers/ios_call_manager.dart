@@ -125,7 +125,7 @@ class IOSCallManager with WidgetsBindingObserver {
       syncCall!.attachCall(call);
       // Show callkit
 
-      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.fromAlias!);
+      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.serial ?? 1, caller: call.fromAlias!, hasVideo: call.isVideoCall);
       // Show callScreen
       showCallScreen(context);
 
@@ -179,7 +179,7 @@ class IOSCallManager with WidgetsBindingObserver {
 
 
       // Show callkit
-      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.fromAlias!);
+      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.serial ?? 1, caller: call.fromAlias!, hasVideo: call.isVideoCall);
 
       // Show callScreen
       showCallScreen(context);
@@ -376,7 +376,9 @@ class IOSCallManager with WidgetsBindingObserver {
   }
 
   void endCallkit() {
-    callKeep.endAllCalls();
+    if (syncCall?.uuid != null && !syncCall!.uuid!.isEmpty) {
+      callKeep.endCall(syncCall!.uuid!);
+    }
   }
 
   /// Handle event for call
@@ -447,15 +449,17 @@ class IOSCallManager with WidgetsBindingObserver {
 
   void clearDataEndDismiss() {
     print('clearDataEndDismiss');
-    if (syncCall != null) {
-      syncCall!.destroy();
-    }
     endCallkit();
     deleteSyncCallIfNeed();
+    if (syncCall != null) {
+      syncCall!.destroy();
+      syncCall = null;
+    }
     if (callScreenKey != null && callScreenKey!.currentState != null) {
       callScreenKey!.currentState!.dismiss();
       callScreenKey = null;
     }
+    callKeep.cleanStringeeCall();
   }
 
   /*
@@ -507,12 +511,12 @@ class IOSCallManager with WidgetsBindingObserver {
     String? uuid = event.uuid;
     int? serial = event.serial;
 
-    // call khong hop le => can end o day
-    if (callId.isEmpty || callStatus != "started") {
-      _fakeCallUuids.add(uuid);
-      endFakeCall(uuid);
-      return;
-    }
+    // // call khong hop le => can end o day
+    // if (callId.isEmpty || callStatus != "started") {
+    //   _fakeCallUuids.add(uuid);
+    //   endFakeCall(uuid);
+    //   return;
+    // }
 
     // call da duoc xu ly roi thi ko xu ly lai => can end callkit da duoc show ben native
     if (checkIfCallIsHandledOrNot(callId, serial)) {
@@ -530,7 +534,6 @@ class IOSCallManager with WidgetsBindingObserver {
       syncCall!.callId = callId;
       syncCall!.serial = serial;
       syncCall!.uuid = uuid;
-      IOSCallManager.shared!.startTimeoutForIncomingCall();
       return;
     }
 
@@ -542,18 +545,18 @@ class IOSCallManager with WidgetsBindingObserver {
       return;
     }
 
-    // Đã có sync call, thông tin cuộc gọi là trùng khớp, nhưng đã show callkit rồi => end callkit vừa show
-    if (syncCall!.showedCallkit() && syncCall!.uuid != uuid) {
-      print('END CALLKIT KHI NHAN DUOC PUSH, SYNC CALL DA SHOW CALLKIT');
-      // _callKit.endCall(uuid);
-      callKeep.endCall(uuid!);
-    }
+    // // Đã có sync call, thông tin cuộc gọi là trùng khớp, nhưng đã show callkit rồi => end callkit vừa show
+    // if (syncCall!.showedCallkit() && syncCall!.uuid != uuid) {
+    //   print('END CALLKIT KHI NHAN DUOC PUSH, SYNC CALL DA SHOW CALLKIT');
+    //   // _callKit.endCall(uuid);
+    //   callKeep.endCall(uuid!);
+    // }
   }
 
   void didDisplayIncomingCall(CallKeepDidDisplayIncomingCall event) {
     print(
         "didDisplayIncomingCall, callId: ${event.callId}, uuid: ${event.uuid}, serial: ${event.serial}");
-    endFakeCall(event.uuid);
+    IOSCallManager.shared!.startTimeoutForIncomingCall();
     deleteSyncCallIfNeed();
   }
 
