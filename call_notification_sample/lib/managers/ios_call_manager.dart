@@ -118,24 +118,20 @@ class IOSCallManager with WidgetsBindingObserver {
 
   void handleIncomingCallEvent(StringeeCall call, BuildContext context) async {
     print("handleIncomingCallEvent, callId: " + call.id!);
+    var uuid = await callKeep.generateUUID(call.id!, call.serial ?? 1);
+    var callInfo = await callKeep.getCallInfo(call.id!, call.serial ?? 1);
+
+    var infoID = callInfo.uuid ?? "";
+    var state = callInfo.state?.index ?? -1;
+
+    print("call keep info: $infoID $state");
+
 
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall(call);
       // Show callkit
-
-      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.serial ?? 1, caller: call.fromAlias!, hasVideo: call.isVideoCall);
-      // Show callScreen
-      showCallScreen(context);
-
-      call.initAnswer().then((result) {
-        String message = result['message'];
-        print("initAnswer: " + message);
-      });
-      syncCall!.answerIfConditionPassed();
-
-      return;
     }
 
     // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
@@ -144,53 +140,37 @@ class IOSCallManager with WidgetsBindingObserver {
       call.reject();
       return;
     }
-
-    // Người dùng đã click reject cuộc gọi thì reject
-    if (syncCall!.userRejected) {
-      print("Người dùng đã click reject cuộc gọi thì reject");
-      call.reject();
-      return;
-    }
-
     // Chưa show callkit thì show không thì update thông tin người gọi lên giao diện
     syncCall!.attachCall(call);
-    if (syncCall!.uuid!.isEmpty) {
-      syncCall!.uuid = genUUID();
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
+
+    syncCall!.uuid = uuid;
+
+    if (callInfo.state == null) {
+       await callKeep.displayIncomingCall(uuid, 'stringee', localizedCallerName: call.fromAlias!, hasVideo: call.isVideoCall);
     } else {
-      callKeep.updateDisplay(syncCall!.uuid!,
-          displayName: call.fromAlias!, handle: call.from!);
+      syncCall!.userAnswered = callInfo.state == CallState.answered;
+      syncCall!.userRejected = callInfo.state == CallState.ended;
     }
-
     showCallScreen(context);
-
-    call.initAnswer();
-    syncCall!.answerIfConditionPassed();
+    await call.initAnswer();
+    if (syncCall!.userAnswered) {
+      syncCall!.answerIfConditionPassed();
+    } else if (syncCall!.userRejected) {
+      syncCall!.reject();
+    }
   }
 
   void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) async {
     print("handleIncomingCall2Event, callId: " + call.id!);
 
     // Chưa có sync call thì tạo mới
+    var uuid = await callKeep.generateUUID(call.id!, call.serial ?? 1);
+    var callInfo = await callKeep.getCallInfo(call.id!, call.serial ?? 1);
+    // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall2(call);
-
-
       // Show callkit
-      syncCall!.uuid = await callKeep.reportCallIfNeeded(call.id!, call.serial ?? 1, caller: call.fromAlias!, hasVideo: call.isVideoCall);
-
-      // Show callScreen
-      showCallScreen(context);
-
-      call.initAnswer().then((result) {
-        String message = result['message'];
-        print("initAnswer: " + message);
-      });
-      syncCall!.answerIfConditionPassed();
-
-      return;
     }
 
     // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
@@ -199,29 +179,24 @@ class IOSCallManager with WidgetsBindingObserver {
       call.reject();
       return;
     }
-
-    // Người dùng đã click reject cuộc gọi thì reject
-    if (syncCall!.userRejected) {
-      print("Người dùng đã click reject cuộc gọi thì reject");
-      call.reject();
-      return;
-    }
-
     // Chưa show callkit thì show không thì update thông tin người gọi lên giao diện
     syncCall!.attachCall2(call);
-    if (syncCall!.uuid!.isEmpty) {
-      syncCall!.uuid = genUUID();
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
+
+    syncCall!.uuid = uuid;
+
+    if (callInfo.state == null) {
+      await callKeep.displayIncomingCall(uuid, 'stringee', localizedCallerName: call.fromAlias!, hasVideo: call.isVideoCall);
     } else {
-      callKeep.updateDisplay(syncCall!.uuid!,
-          displayName: call.fromAlias!, handle: call.from!);
+      syncCall!.userAnswered = callInfo.state == CallState.answered;
+      syncCall!.userRejected = callInfo.state == CallState.ended;
     }
-
     showCallScreen(context);
-
-    call.initAnswer();
-    syncCall!.answerIfConditionPassed();
+    await call.initAnswer();
+    if (syncCall!.userAnswered) {
+      syncCall!.answerIfConditionPassed();
+    } else if (syncCall!.userRejected) {
+      syncCall!.reject();
+    }
   }
 
   void showCallScreen(BuildContext? context) {

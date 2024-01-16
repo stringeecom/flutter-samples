@@ -33,8 +33,8 @@ dependencies:
   uuid: ^3.0.7
   callkeep:
     git:
-      url: https://github.com/HiepH-Stringee/callkeep
-      ref: master
+      url: https://github.com/stringeecom/callkeep.git
+      ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
 
   #for android
   permission_handler: ^10.2.0
