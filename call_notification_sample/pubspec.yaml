@@ -27,13 +27,14 @@ dependencies:
   stringee_flutter_plugin:
     git:
       url: https://github.com/stringeecom/stringee_flutter_plugin.git
+      ref: master
 
   #for ios
   uuid: ^3.0.7
   callkeep:
     git:
       url: https://github.com/stringeecom/callkeep.git
-      ref: master
+      ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
 
   #for android
   permission_handler: ^10.2.0

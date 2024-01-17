@@ -116,29 +116,22 @@ class IOSCallManager with WidgetsBindingObserver {
     });
   }
 
-  void handleIncomingCallEvent(StringeeCall call, BuildContext context) {
+  void handleIncomingCallEvent(StringeeCall call, BuildContext context) async {
     print("handleIncomingCallEvent, callId: " + call.id!);
+    var uuid = await callKeep.generateUUID(call.id!, call.serial ?? 1);
+    var callInfo = await callKeep.getCallInfo(call.id!, call.serial ?? 1);
+
+    var infoID = callInfo.uuid ?? "";
+    var state = callInfo.state?.index ?? -1;
+
+    print("call keep info: $infoID $state");
+
 
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall(call);
-      syncCall!.uuid = genUUID();
-
       // Show callkit
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
-
-      // Show callScreen
-      showCallScreen(context);
-
-      call.initAnswer().then((result) {
-        String message = result['message'];
-        print("initAnswer: " + message);
-      });
-      syncCall!.answerIfConditionPassed();
-
-      return;
     }
 
     // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
@@ -147,54 +140,37 @@ class IOSCallManager with WidgetsBindingObserver {
       call.reject();
       return;
     }
-
-    // Người dùng đã click reject cuộc gọi thì reject
-    if (syncCall!.userRejected) {
-      print("Người dùng đã click reject cuộc gọi thì reject");
-      call.reject();
-      return;
-    }
-
     // Chưa show callkit thì show không thì update thông tin người gọi lên giao diện
     syncCall!.attachCall(call);
-    if (syncCall!.uuid!.isEmpty) {
-      syncCall!.uuid = genUUID();
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
+
+    syncCall!.uuid = uuid;
+
+    if (callInfo.state == null) {
+       await callKeep.displayIncomingCall(uuid, 'stringee', localizedCallerName: call.fromAlias!, hasVideo: call.isVideoCall);
     } else {
-      callKeep.updateDisplay(syncCall!.uuid!,
-          displayName: call.fromAlias!, handle: call.from!);
+      syncCall!.userAnswered = callInfo.state == CallState.answered;
+      syncCall!.userRejected = callInfo.state == CallState.ended;
     }
-
     showCallScreen(context);
-
-    call.initAnswer();
-    syncCall!.answerIfConditionPassed();
+    await call.initAnswer();
+    if (syncCall!.userAnswered) {
+      syncCall!.answerIfConditionPassed();
+    } else if (syncCall!.userRejected) {
+      syncCall!.reject();
+    }
   }
 
-  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) {
+  void handleIncomingCall2Event(StringeeCall2 call, BuildContext context) async {
     print("handleIncomingCall2Event, callId: " + call.id!);
 
+    // Chưa có sync call thì tạo mới
+    var uuid = await callKeep.generateUUID(call.id!, call.serial ?? 1);
+    var callInfo = await callKeep.getCallInfo(call.id!, call.serial ?? 1);
     // Chưa có sync call thì tạo mới
     if (syncCall == null) {
       syncCall = SyncCall();
       syncCall!.attachCall2(call);
-      syncCall!.uuid = genUUID();
-
       // Show callkit
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
-
-      // Show callScreen
-      showCallScreen(context);
-
-      call.initAnswer().then((result) {
-        String message = result['message'];
-        print("initAnswer: " + message);
-      });
-      syncCall!.answerIfConditionPassed();
-
-      return;
     }
 
     // Cuộc gọi mới không phải là cuộc gọi đang xử lý thì reject
@@ -203,29 +179,24 @@ class IOSCallManager with WidgetsBindingObserver {
       call.reject();
       return;
     }
-
-    // Người dùng đã click reject cuộc gọi thì reject
-    if (syncCall!.userRejected) {
-      print("Người dùng đã click reject cuộc gọi thì reject");
-      call.reject();
-      return;
-    }
-
     // Chưa show callkit thì show không thì update thông tin người gọi lên giao diện
     syncCall!.attachCall2(call);
-    if (syncCall!.uuid!.isEmpty) {
-      syncCall!.uuid = genUUID();
-      callKeep.displayIncomingCall(syncCall!.uuid!, call.from!,
-          localizedCallerName: call.fromAlias!);
+
+    syncCall!.uuid = uuid;
+
+    if (callInfo.state == null) {
+      await callKeep.displayIncomingCall(uuid, 'stringee', localizedCallerName: call.fromAlias!, hasVideo: call.isVideoCall);
     } else {
-      callKeep.updateDisplay(syncCall!.uuid!,
-          displayName: call.fromAlias!, handle: call.from!);
+      syncCall!.userAnswered = callInfo.state == CallState.answered;
+      syncCall!.userRejected = callInfo.state == CallState.ended;
     }
-
     showCallScreen(context);
-
-    call.initAnswer();
-    syncCall!.answerIfConditionPassed();
+    await call.initAnswer();
+    if (syncCall!.userAnswered) {
+      syncCall!.answerIfConditionPassed();
+    } else if (syncCall!.userRejected) {
+      syncCall!.reject();
+    }
   }
 
   void showCallScreen(BuildContext? context) {
@@ -380,7 +351,9 @@ class IOSCallManager with WidgetsBindingObserver {
   }
 
   void endCallkit() {
-    callKeep.endAllCalls();
+    if (syncCall?.uuid != null && !syncCall!.uuid!.isEmpty) {
+      callKeep.endCall(syncCall!.uuid!);
+    }
   }
 
   /// Handle event for call
@@ -451,15 +424,17 @@ class IOSCallManager with WidgetsBindingObserver {
 
   void clearDataEndDismiss() {
     print('clearDataEndDismiss');
-    if (syncCall != null) {
-      syncCall!.destroy();
-    }
     endCallkit();
     deleteSyncCallIfNeed();
+    if (syncCall != null) {
+      syncCall!.destroy();
+      syncCall = null;
+    }
     if (callScreenKey != null && callScreenKey!.currentState != null) {
       callScreenKey!.currentState!.dismiss();
       callScreenKey = null;
     }
+    callKeep.cleanStringeeCall();
   }
 
   /*
@@ -511,12 +486,12 @@ class IOSCallManager with WidgetsBindingObserver {
     String? uuid = event.uuid;
     int? serial = event.serial;
 
-    // call khong hop le => can end o day
-    if (callId.isEmpty || callStatus != "started") {
-      _fakeCallUuids.add(uuid);
-      endFakeCall(uuid);
-      return;
-    }
+    // // call khong hop le => can end o day
+    // if (callId.isEmpty || callStatus != "started") {
+    //   _fakeCallUuids.add(uuid);
+    //   endFakeCall(uuid);
+    //   return;
+    // }
 
     // call da duoc xu ly roi thi ko xu ly lai => can end callkit da duoc show ben native
     if (checkIfCallIsHandledOrNot(callId, serial)) {
@@ -534,7 +509,6 @@ class IOSCallManager with WidgetsBindingObserver {
       syncCall!.callId = callId;
       syncCall!.serial = serial;
       syncCall!.uuid = uuid;
-      IOSCallManager.shared!.startTimeoutForIncomingCall();
       return;
     }
 
@@ -546,18 +520,18 @@ class IOSCallManager with WidgetsBindingObserver {
       return;
     }
 
-    // Đã có sync call, thông tin cuộc gọi là trùng khớp, nhưng đã show callkit rồi => end callkit vừa show
-    if (syncCall!.showedCallkit() && syncCall!.uuid != uuid) {
-      print('END CALLKIT KHI NHAN DUOC PUSH, SYNC CALL DA SHOW CALLKIT');
-      // _callKit.endCall(uuid);
-      callKeep.endCall(uuid!);
-    }
+    // // Đã có sync call, thông tin cuộc gọi là trùng khớp, nhưng đã show callkit rồi => end callkit vừa show
+    // if (syncCall!.showedCallkit() && syncCall!.uuid != uuid) {
+    //   print('END CALLKIT KHI NHAN DUOC PUSH, SYNC CALL DA SHOW CALLKIT');
+    //   // _callKit.endCall(uuid);
+    //   callKeep.endCall(uuid!);
+    // }
   }
 
   void didDisplayIncomingCall(CallKeepDidDisplayIncomingCall event) {
     print(
         "didDisplayIncomingCall, callId: ${event.callId}, uuid: ${event.uuid}, serial: ${event.serial}");
-    endFakeCall(event.uuid);
+    IOSCallManager.shared!.startTimeoutForIncomingCall();
     deleteSyncCallIfNeed();
   }
 
