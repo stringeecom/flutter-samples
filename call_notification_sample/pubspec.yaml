@@ -18,7 +18,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.12.0 <3.0.0'
+  sdk: '>=3.0.6 <4.0.0'
 
 dependencies:
   flutter:
@@ -26,27 +26,23 @@ dependencies:
 
   stringee_flutter_plugin:
     git:
-      url: https://github.com/stringeecom/stringee_flutter_plugin.git
-      ref: master
+      url: https://github.com/stringeecom/stringee_flutter_plugin
+      ref: anhnqk/features/SG-7532-change-to-use-listener
 
   #for ios
-  uuid: ^3.0.7
-  callkeep:
-    git:
-      url: https://github.com/stringeecom/callkeep.git
-      ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
+  uuid: ^4.3.3
+  callkeep: ^0.3.3
 
   #for android
-  permission_handler: ^10.2.0
-  shared_preferences: ^2.0.18
-  firebase_core: ^2.7.0
-  firebase_messaging: ^14.2.5
-  device_info_plus: ^8.1.0
-  flutter_local_notifications: ^13.0.0
+  permission_handler: ^11.2.0
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  device_info_plus: ^9.1.1
+  flutter_local_notifications: ^16.3.1+1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.5
+  cupertino_icons: ^1.0.6
 
 dev_dependencies:
   flutter_test:

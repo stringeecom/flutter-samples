@@ -1,176 +1,313 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:ios_call_notification_sample/managers/android_call_manager.dart';
-import 'package:ios_call_notification_sample/managers/ios_call_manager.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'managers/instance_manager.dart' as InstanceManager;
-import 'screens/call_screen.dart';
+import 'call.dart';
+import 'constants/constants.dart';
+import 'firebase_options.dart';
+import 'listener/connection_listener.dart';
+import 'managers/client_manager.dart';
+import 'view/main_button.dart';
 
-//var user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDUwNDE1NjIiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzA3NjMzNTYyLCJ1c2VySWQiOiJ1c2VyMiJ9.ZijQ0ForATTz6XMny3rjkpl9StKWDzNC2ueQ-WE8i9w';
-var user1 = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDUwNDEzOTciLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzA3NjMzMzk3LCJ1c2VySWQiOiJ1c2VyMSJ9.DcDwWs5FCqbHOhiNxfFZfKlElNA6RM7GqXAb_RxS6-E';
-
-String toUserId = "";
-bool isAndroid = Platform.isAndroid;
-bool showIncomingCall = false;
-AndroidCallManager? _androidCallManager = AndroidCallManager.shared;
-IOSCallManager? _iOSCallManager = IOSCallManager.shared;
-
-/// Nhận và hiện notification khi app ở dưới background hoặc đã bị kill ở android
 @pragma('vm:entry-point')
-Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
-  await Firebase.initializeApp().whenComplete(() {
-    print("Handling a background message: ${remoteMessage.data}");
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
-    Map<dynamic, dynamic> _notiData = remoteMessage.data;
-    Map<dynamic, dynamic> _data = json.decode(_notiData['data']);
-    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-    if (_data['callStatus'] == 'started') {
-      const AndroidInitializationSettings androidSettings =
-          AndroidInitializationSettings('@drawable/ic_noti');
-      final InitializationSettings initializationSettings =
-          InitializationSettings(android: androidSettings);
+final StreamController<String?> selectNotificationStream =
+    StreamController<String?>.broadcast();
 
-      flutterLocalNotificationsPlugin
-          .initialize(initializationSettings)
-          .then((value) async {
-        if (value!) {
-          /// Create channel for notification
-          const AndroidNotificationDetails androidPlatformChannelSpecifics =
-              AndroidNotificationDetails(
-            'your channel id', 'your channel name',
-            channelDescription: 'your channel description',
-            importance: Importance.high,
-            priority: Priority.high,
-            category: AndroidNotificationCategory.call,
+bool isAnswerFromPush = false;
 
-            /// Set true for show App in lockScreen
-            fullScreenIntent: true,
-          );
-          const NotificationDetails platformChannelSpecifics =
-              NotificationDetails(android: androidPlatformChannelSpecifics);
-
-          /// Show notification
-          await flutterLocalNotificationsPlugin.show(
-            1234,
-            'Incoming Call from ${_data['from']['alias']}',
-            _data['from']['number'],
-            platformChannelSpecifics,
-          );
-        }
-      });
-    } else if (_data['callStatus'] == 'ended') {
-      flutterLocalNotificationsPlugin.cancel(1234);
+@pragma('vm:entry-point')
+void notificationTapBackground(
+    NotificationResponse notificationResponse) async {
+  // handle click button reject on notification
+  debugPrint('notification(${notificationResponse.id}) action tapped: '
+      '${notificationResponse.actionId}');
+  if (notificationResponse.actionId == Constants.actionReject) {
+    SendPort? clientServer =
+        IsolateNameServer.lookupPortByName(Constants.serverClientName);
+    if (clientServer != null) {
+      Map<dynamic, dynamic> dataSend = {
+        'action': Constants.actionRejectFromNotification,
+      };
+      clientServer.send(dataSend);
+    } else {
+      SendPort? pushServer =
+          IsolateNameServer.lookupPortByName(Constants.serverPushName);
+      if (pushServer != null) {
+        Map<dynamic, dynamic> dataSend = {
+          'action': Constants.actionRejectFromNotification,
+        };
+        pushServer.send(dataSend);
+      }
     }
-  });
+  }
 }
 
-main() {
+@pragma('vm:entry-point')
+Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint("Handling a background message: ${remoteMessage.data}");
+
+  Map<dynamic, dynamic> notiData = remoteMessage.data;
+  Map<dynamic, dynamic> data = json.decode(notiData['data']);
+  bool isStringeePush = notiData['stringeePushNotification'] == '1.0';
+  if (isStringeePush) {
+    SendPort? clientServer =
+        IsolateNameServer.lookupPortByName(Constants.serverClientName);
+    SendPort? pushServer =
+        IsolateNameServer.lookupPortByName(Constants.serverPushName);
+    if (clientServer == null && pushServer == null) {
+      ClientManager().initFromPush();
+      ClientManager().connect();
+    }
+
+    if (data['callStatus'] == 'started') {
+      /// Create channel for notification
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        Constants.channelId, Constants.channelName,
+        channelDescription: Constants.channelDescription,
+        importance: Importance.max,
+        priority: Priority.high,
+        category: AndroidNotificationCategory.call,
+        ongoing: true,
+        autoCancel: false,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(Constants.actionAnswer, 'Answer',
+              titleColor: Colors.green,
+              showsUserInterface: true,
+              cancelNotification: true),
+          AndroidNotificationAction(Constants.actionReject, 'Reject',
+              titleColor: Colors.redAccent, cancelNotification: true),
+        ],
+
+        /// Set true for show App in lockScreen
+        fullScreenIntent: true,
+      );
+      const NotificationDetails platformChannelSpecifics =
+          NotificationDetails(android: androidPlatformChannelSpecifics);
+
+      /// Show notification
+      await flutterLocalNotificationsPlugin.show(
+        Constants.notificationId,
+        'Incoming Call from ${data['from']['alias']}',
+        data['from']['number'],
+        platformChannelSpecifics,
+      );
+    } else if (data['callStatus'] == 'ended') {
+      flutterLocalNotificationsPlugin.cancel(Constants.notificationId);
+    }
+  }
+}
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (isAndroid)
-    Firebase.initializeApp().whenComplete(() {
-      print("completed");
-      FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
-    });
-  runApp(MyApp());
+  if (Platform.isAndroid) {
+    final NotificationAppLaunchDetails? notificationAppLaunchDetails =
+        await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+
+    if (notificationAppLaunchDetails != null) {
+      if (notificationAppLaunchDetails.notificationResponse != null) {
+        if (notificationAppLaunchDetails.didNotificationLaunchApp) {
+          SendPort? fbServer =
+              IsolateNameServer.lookupPortByName(Constants.serverPushName);
+          if (fbServer != null) {
+            Map<dynamic, dynamic> dataSend = {
+              'action': Constants.actionRelease,
+            };
+            fbServer.send(dataSend);
+          }
+          // Handle click notification when app killed
+          debugPrint(
+              'notificationAppLaunchDetails - ${notificationAppLaunchDetails.notificationResponse!.notificationResponseType.name}');
+          switch (notificationAppLaunchDetails
+              .notificationResponse!.notificationResponseType) {
+            case NotificationResponseType.selectedNotification:
+              debugPrint(
+                  'selectedNotification - ${notificationAppLaunchDetails.notificationResponse!.id}');
+              break;
+            case NotificationResponseType.selectedNotificationAction:
+              debugPrint(
+                  'selectedNotificationAction - ${notificationAppLaunchDetails.notificationResponse!.actionId}');
+              // Handle click button answer notification when app killed
+              if (notificationAppLaunchDetails.notificationResponse!.actionId ==
+                  Constants.actionAnswer) {
+                isAnswerFromPush = true;
+              }
+              break;
+          }
+        } else {
+          debugPrint(
+              'selectedNotificationAction - ${notificationAppLaunchDetails.notificationResponse!.actionId}');
+        }
+      }
+    }
+
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('ic_noti');
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: androidSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse:
+          (NotificationResponse notificationResponse) {
+        debugPrint('onDidReceiveNotificationResponse');
+        switch (notificationResponse.notificationResponseType) {
+          case NotificationResponseType.selectedNotification:
+            // handle click on notification when app in background
+            selectNotificationStream.add(Constants.actionClickNotification);
+            break;
+          case NotificationResponseType.selectedNotificationAction:
+            // handle click button answer on notification when app in background
+            debugPrint(
+                'onDidReceiveNotificationResponse - selectedNotificationAction - ${notificationResponse.actionId}');
+            if (notificationResponse.actionId == Constants.actionAnswer) {
+              selectNotificationStream
+                  .add(Constants.actionAnswerFromNotification);
+            }
+            break;
+        }
+      },
+      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
+    );
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+    FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
+  }
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Call Notification Sample',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: MyHomePage(title: 'Home Page'),
-    );
+    return const MaterialApp(
+        title: "OneToOneCallSample",
+        debugShowCheckedModeBanner: false,
+        home: MyHomePage());
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, this.title}) : super(key: key);
+  static String routeName = 'homePage';
 
-  final String? title;
+  const MyHomePage({super.key});
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<StatefulWidget> createState() {
+    return _MyHomePageState();
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  String? myUserId = "";
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
+  String _connectStatus = 'Not connected...';
+  bool _isPermissionGranted = false;
+  String _to = "";
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint("didChangeAppLifecycle - $state");
+    if (state == AppLifecycleState.resumed) {
+      flutterLocalNotificationsPlugin.cancel(Constants.notificationId);
+      ClientManager().isAppInBackground = false;
+    } else if (state == AppLifecycleState.inactive) {
+      ClientManager().isAppInBackground = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    selectNotificationStream.close();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    if (isAndroid) {
-      _androidCallManager!.setContext(context);
+    if (Platform.isAndroid) {
+      selectNotificationStream.stream.listen((String? action) async {
+        debugPrint('selectNotificationStream: action - $action');
+        if (action == Constants.actionAnswerFromNotification) {
+          ClientManager().callManager!.answer();
+        }
 
-      ///cấp quyền truy cập với android
-      requestPermissions();
+        await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (BuildContext context) => Call(
+            isIncomingCall: true,
+            isStringeeCall: ClientManager().callManager!.isStringeeCall,
+          ),
+        ));
+      });
+      ClientManager().initFromClient();
+      initAndConnectClient();
     } else {
-      /// Cấu hình thư viện để nhận push notification và sử dụng Callkit để show giao diện call native của iOS
-      _iOSCallManager!.configureCallKeep();
+      initAndConnectClient();
     }
-
-    /// Lắng nghe sự kiện của StringeeClient(kết nối, cuộc gọi đến...)
-    InstanceManager.client.eventStreamController.stream.listen((event) {
-      Map<dynamic, dynamic> map = event;
-      switch (map['eventType']) {
-        case StringeeClientEvents.didConnect:
-          handleDidConnectEvent();
-          break;
-        case StringeeClientEvents.didDisconnect:
-          handleDiddisconnectEvent();
-          break;
-        case StringeeClientEvents.didFailWithError:
-          handleDidFailWithErrorEvent(
-              map['body']['code'], map['body']['message']);
-          break;
-        case StringeeClientEvents.requestAccessToken:
-          handleRequestAccessTokenEvent();
-          break;
-        case StringeeClientEvents.didReceiveCustomMessage:
-          handleDidReceiveCustomMessageEvent(map['body']);
-          break;
-        case StringeeClientEvents.incomingCall:
-          StringeeCall? call = map['body'];
-          if (isAndroid) {
-            _androidCallManager!.handleIncomingCallEvent(call!, context);
-          } else {
-            _iOSCallManager!.handleIncomingCallEvent(call!, context);
-          }
-          break;
-        case StringeeClientEvents.incomingCall2:
-          StringeeCall2? call = map['body'];
-          if (isAndroid) {
-            _androidCallManager!.handleIncomingCall2Event(call!, context);
-          } else {
-            _iOSCallManager!.handleIncomingCall2Event(call!, context);
-          }
-          break;
-        default:
-          break;
-      }
-    });
-
-    InstanceManager.client.connect(user1);
   }
 
-  requestPermissions() async {
+  void initAndConnectClient() async {
+    if (Platform.isAndroid) {
+      if (!_isPermissionGranted) {
+        _isPermissionGranted = await requestPermissions();
+      }
+    }
+    ClientManager().registerEvent(ConnectionListener(onConnect: (status) {
+      setState(() {
+        _connectStatus = status;
+      });
+    }, onIncomingCall: () {
+      if (Platform.isIOS ||
+          (_isPermissionGranted && !ClientManager().isAppInBackground)) {
+        if (isAnswerFromPush) {
+          ClientManager().callManager!.answer();
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Call(
+              isIncomingCall: true,
+              isStringeeCall: true,
+            ),
+          ),
+        );
+      }
+    }, onIncomingCall2: () {
+      if (Platform.isIOS ||
+          (_isPermissionGranted && !ClientManager().isAppInBackground)) {
+        if (isAnswerFromPush) {
+          ClientManager().callManager!.answer();
+        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => Call(
+              isIncomingCall: true,
+              isStringeeCall: false,
+            ),
+          ),
+        );
+      }
+    }));
+    ClientManager().connect();
+  }
+
+  Future<bool> requestPermissions() async {
     DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
     List<Permission> permissions = [
@@ -180,240 +317,135 @@ class _MyHomePageState extends State<MyHomePage> {
     if (androidInfo.version.sdkInt >= 31) {
       permissions.add(Permission.bluetoothConnect);
     }
-    Map<Permission, PermissionStatus> statuses = await permissions.request();
-    print(statuses);
-
     if (androidInfo.version.sdkInt >= 33) {
-      // Register permission for show notification in android 13
-      FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-          FlutterLocalNotificationsPlugin();
-      flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()!
-          .requestPermission();
+      permissions.add(Permission.notification);
     }
-  }
 
-  Future<void> registerPushWithStringeeServer() async {
-    if (isAndroid) {
-      Stream<String> tokenRefreshStream =
-          FirebaseMessaging.instance.onTokenRefresh;
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      bool? registered = (prefs.getBool("register") == null)
-          ? false
-          : prefs.getBool("register");
-
-      ///kiểm tra đã register push chưa
-      if (registered != null && !registered) {
-        FirebaseMessaging.instance.getToken().then((token) {
-          InstanceManager.client.registerPush(token!).then((value) {
-            print('Register push ' + value['message']);
-            if (value['status']) {
-              prefs.setBool("register", true);
-              prefs.setString("token", token);
-            }
-          });
+    Map<Permission, PermissionStatus> permissionsStatus =
+        await permissions.request();
+    debugPrint('Permission statuses - $permissionsStatus');
+    bool isAllGranted = true;
+    permissionsStatus.forEach((key, value) {
+      if (value != PermissionStatus.granted) {
+        setState(() {
+          isAllGranted = false;
         });
       }
-
-      ///Nhận token mới từ firebase
-      tokenRefreshStream.listen((token) {
-        ///Xóa token cũ
-        InstanceManager.client
-            .unregisterPush(prefs.getString("token")!)
-            .then((value) {
-          print('Unregister push ' + value['message']);
-          if (value['status']) {
-            ///Register với token mới
-            prefs.setBool("register", false);
-            prefs.remove("token");
-            InstanceManager.client.registerPush(token).then((value) {
-              print('Register push ' + value['message']);
-              if (value['status']) {
-                prefs.setBool("register", true);
-                prefs.setString("token", token);
-              }
-            });
-          }
-        });
-      });
-    } else {
-      _iOSCallManager!.registerPushWithStringeeServer();
-    }
-  }
-
-  /// StringeeClient Listeners
-  ///
-  void handleDidConnectEvent() {
-    print("handleDidConnectEvent");
-    if (!isAndroid) {
-      _iOSCallManager!.startTimeoutForIncomingCall();
-    }
-
-    setState(() {
-      myUserId = InstanceManager.client.userId;
     });
-
-    registerPushWithStringeeServer();
-  }
-
-  void handleDiddisconnectEvent() {
-    print("handleDiddisconnectEvent");
-    if (!isAndroid) {
-      _iOSCallManager!.stopTimeoutForIncomingCall();
-    }
-
-    setState(() {
-      myUserId = 'Not connected';
-    });
-  }
-
-  void handleDidFailWithErrorEvent(int? code, String message) {
-    print('code: ' + code.toString() + ', message: ' + message);
-  }
-
-  void handleRequestAccessTokenEvent() {
-    print('Request new access token');
-  }
-
-  void handleDidReceiveCustomMessageEvent(Map<dynamic, dynamic> map) {
-    print('from: ' + map['fromUserId'] + '\nmessage: ' + map['message']);
+    return isAllGranted;
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget topText = new Container(
-      padding: EdgeInsets.only(left: 10.0, top: 10.0),
-      child: new Text(
-        'Connected as: $myUserId',
-        style: new TextStyle(
+    Widget topText = Container(
+      padding: const EdgeInsets.only(left: 10.0, top: 10.0),
+      child: Text(
+        _connectStatus,
+        style: const TextStyle(
           color: Colors.black,
           fontSize: 20.0,
         ),
       ),
     );
 
-    return new Scaffold(
-      appBar: new AppBar(
-        title: new Text("OneToOneCallSample"),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Call Sample"),
         backgroundColor: Colors.indigo[600],
       ),
-      body: new Stack(
-        children: <Widget>[topText, new ActionForm()],
-      ),
-    );
-  }
-}
-
-class ActionForm extends StatefulWidget {
-  @override
-  _ActionFormState createState() => _ActionFormState();
-}
-
-class _ActionFormState extends State<ActionForm> {
-  @override
-  Widget build(BuildContext context) {
-    return new Form(
-//      key: _formKey,
-      child: new Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      body: Stack(
         children: <Widget>[
-          new Container(
-            padding: EdgeInsets.all(20.0),
-            child: new TextField(
-              onChanged: (String value) {
-                toUserId = value;
-              },
-              decoration: InputDecoration(
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.red),
+          topText,
+          Form(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(20.0),
+                  child: TextField(
+                    onChanged: (String value) {
+                      setState(() {
+                        _to = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      hintText: 'To',
+                    ),
                   ),
-                  hintText: 'to'),
+                ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisSize: MainAxisSize.max,
+                      children: [
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            MainButton(
+                              text: 'Call',
+                              onPressed: () {
+                                _callTapped(true, false);
+                              },
+                            ),
+                            MainButton(
+                              text: 'Video call',
+                              margin: const EdgeInsets.only(top: 20.0),
+                              onPressed: () {
+                                _callTapped(true, true);
+                              },
+                            ),
+                          ],
+                        ),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            MainButton(
+                              text: 'Call 2',
+                              onPressed: () {
+                                _callTapped(false, false);
+                              },
+                            ),
+                            MainButton(
+                              text: 'Video call 2',
+                              margin: const EdgeInsets.only(top: 20.0),
+                              onPressed: () {
+                                _callTapped(false, true);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-          new Container(
-              margin: EdgeInsets.only(top: 20.0),
-              child: new Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  new Container(
-                    height: 40.0,
-                    width: 150.0,
-                    child: new ElevatedButton(
-                      onPressed: () {
-                        callTapped(false, false);
-                      },
-                      child: Text('CALL'),
-                    ),
-                  ),
-                  new Container(
-                    height: 40.0,
-                    width: 150.0,
-                    child: new ElevatedButton(
-                      onPressed: () {
-                        callTapped(true, false);
-                      },
-                      child: Text('VIDEOCALL'),
-                    ),
-                  ),
-                ],
-              )),
-          new Container(
-              margin: EdgeInsets.only(top: 20.0),
-              child: new Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  new Container(
-                    height: 40.0,
-                    width: 150.0,
-                    child: new ElevatedButton(
-                      onPressed: () {
-                        callTapped(false, true);
-                      },
-                      child: Text('CALL2'),
-                    ),
-                  ),
-                  new Container(
-                    height: 40.0,
-                    width: 150.0,
-                    child: new ElevatedButton(
-                      onPressed: () {
-                        callTapped(true, true);
-                      },
-                      child: Text('VIDEOCALL2'),
-                    ),
-                  ),
-                ],
-              )),
+          )
         ],
       ),
     );
   }
 
-  void callTapped(bool isVideo, bool useCall2) {
-    if (toUserId.isEmpty || !InstanceManager.client.hasConnected) return;
-
-    GlobalKey<CallScreenState> callScreenKey = GlobalKey<CallScreenState>();
-    if (isAndroid) {
-      _androidCallManager!.callScreenKey = callScreenKey;
-    } else {
-      _iOSCallManager!.callScreenKey = callScreenKey;
+  void _callTapped(bool isStringeeCall, bool isVideoCall) {
+    if (_to.isEmpty || !ClientManager().stringeeClient!.hasConnected) return;
+    if (_isPermissionGranted || Platform.isIOS) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Call(
+            to: _to,
+            isVideoCall: isVideoCall,
+            isIncomingCall: false,
+            isStringeeCall: isStringeeCall,
+          ),
+        ),
+      );
     }
-
-    CallScreen callScreen = CallScreen(
-      key: callScreenKey,
-      fromUserId: InstanceManager.client.userId,
-      toUserId: toUserId,
-      isVideo: isVideo,
-      useCall2: useCall2,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => callScreen),
-    );
   }
 }
