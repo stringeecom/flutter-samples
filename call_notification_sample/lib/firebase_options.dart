@@ -51,19 +51,22 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAkhOBIEaIdLoMNSLV3DYGOCZ_STMzwlIE',
-    appId: '1:519570495284:android:2d9dadb340a114ee763761',
+    appId: '1:519570495284:android:624734bdffd0d9ab763761',
     messagingSenderId: '519570495284',
     projectId: 'stringeesample-f3e03',
+    databaseURL:
+        'https://stringeesample-f3e03-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'stringeesample-f3e03.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDsZN8yUeUtkSL8RoW8X44mABZrWEYxSBY',
-    appId: '1:519570495284:ios:de903b278c160cb0763761',
+    appId: '1:519570495284:ios:da98b23d6bb63e80763761',
     messagingSenderId: '519570495284',
     projectId: 'stringeesample-f3e03',
+    databaseURL:
+        'https://stringeesample-f3e03-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'stringeesample-f3e03.appspot.com',
-    iosClientId: '519570495284-s5g4f98vs28titvoop69gl1h1r1677hh.apps.googleusercontent.com',
-    iosBundleId: 'com.stringee.callSample',
+    iosBundleId: 'com.stringee.flutter.sample',
   );
 }

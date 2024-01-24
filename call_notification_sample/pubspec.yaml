@@ -65,15 +65,15 @@ flutter:
   #   - images/a_dot_ham.jpeg
 
   assets:
-    - images/end.png
-    - images/ic_mic.png
-    - images/switch_camera.png
-    - images/ic_speaker_off.png
-    - images/ic_video.png
-    - images/ic_speaker_on.png
-    - images/ic_video_off.png
-    - images/ic_mute.png
-    - images/answer.png
+    - images/icn_answer/ic-answer-new.png
+    - images/icn_end_call/ic-end-call-new.png
+    - images/icn_mute/ic-mute-new.png
+    - images/icn_off_speaker/ic-speaker-selected-new.png
+    - images/icn_open_video/ic-video-new.png
+    - images/icn_speaker/ic-speaker-new.png
+    - images/icn_switch_camera/ic-switch-camera-new.png
+    - images/icn_turn_off_video/ic-video-selected-new.png
+    - images/icn_un_mute/ic-mute-selected-new.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

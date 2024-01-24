@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:isolate';
-import 'dart:ui';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -19,42 +17,6 @@ import 'managers/client_manager.dart';
 import 'view/main_button.dart';
 
 @pragma('vm:entry-point')
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-
-final StreamController<String?> selectNotificationStream =
-    StreamController<String?>.broadcast();
-
-bool isAnswerFromPush = false;
-
-@pragma('vm:entry-point')
-void notificationTapBackground(
-    NotificationResponse notificationResponse) async {
-  // handle click button reject on notification
-  debugPrint('notification(${notificationResponse.id}) action tapped: '
-      '${notificationResponse.actionId}');
-  if (notificationResponse.actionId == Constants.actionReject) {
-    SendPort? clientServer =
-        IsolateNameServer.lookupPortByName(Constants.serverClientName);
-    if (clientServer != null) {
-      Map<dynamic, dynamic> dataSend = {
-        'action': Constants.actionRejectFromNotification,
-      };
-      clientServer.send(dataSend);
-    } else {
-      SendPort? pushServer =
-          IsolateNameServer.lookupPortByName(Constants.serverPushName);
-      if (pushServer != null) {
-        Map<dynamic, dynamic> dataSend = {
-          'action': Constants.actionRejectFromNotification,
-        };
-        pushServer.send(dataSend);
-      }
-    }
-  }
-}
-
-@pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint("Handling a background message: ${remoteMessage.data}");
@@ -63,15 +25,6 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   Map<dynamic, dynamic> data = json.decode(notiData['data']);
   bool isStringeePush = notiData['stringeePushNotification'] == '1.0';
   if (isStringeePush) {
-    SendPort? clientServer =
-        IsolateNameServer.lookupPortByName(Constants.serverClientName);
-    SendPort? pushServer =
-        IsolateNameServer.lookupPortByName(Constants.serverPushName);
-    if (clientServer == null && pushServer == null) {
-      ClientManager().initFromPush();
-      ClientManager().connect();
-    }
-
     if (data['callStatus'] == 'started') {
       /// Create channel for notification
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -84,12 +37,20 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
         ongoing: true,
         autoCancel: false,
         actions: <AndroidNotificationAction>[
-          AndroidNotificationAction(Constants.actionAnswer, 'Answer',
-              titleColor: Colors.green,
-              showsUserInterface: true,
-              cancelNotification: true),
-          AndroidNotificationAction(Constants.actionReject, 'Reject',
-              titleColor: Colors.redAccent, cancelNotification: true),
+          AndroidNotificationAction(
+            Constants.actionAnswer,
+            'Answer',
+            titleColor: Colors.green,
+            showsUserInterface: true,
+            cancelNotification: true,
+          ),
+          AndroidNotificationAction(
+            Constants.actionReject,
+            'Reject',
+            titleColor: Colors.redAccent,
+            cancelNotification: true,
+            showsUserInterface: true,
+          ),
         ],
 
         /// Set true for show App in lockScreen
@@ -111,6 +72,16 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   }
 }
 
+@pragma('vm:entry-point')
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+final StreamController<String?> selectNotificationStream =
+    StreamController<String?>.broadcast();
+
+bool isAnswerFromPush = false;
+bool isRejectFromPush = false;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (Platform.isAndroid) {
@@ -120,15 +91,6 @@ Future<void> main() async {
     if (notificationAppLaunchDetails != null) {
       if (notificationAppLaunchDetails.notificationResponse != null) {
         if (notificationAppLaunchDetails.didNotificationLaunchApp) {
-          SendPort? fbServer =
-              IsolateNameServer.lookupPortByName(Constants.serverPushName);
-          if (fbServer != null) {
-            Map<dynamic, dynamic> dataSend = {
-              'action': Constants.actionRelease,
-            };
-            fbServer.send(dataSend);
-          }
-          // Handle click notification when app killed
           debugPrint(
               'notificationAppLaunchDetails - ${notificationAppLaunchDetails.notificationResponse!.notificationResponseType.name}');
           switch (notificationAppLaunchDetails
@@ -144,6 +106,10 @@ Future<void> main() async {
               if (notificationAppLaunchDetails.notificationResponse!.actionId ==
                   Constants.actionAnswer) {
                 isAnswerFromPush = true;
+              }
+              if (notificationAppLaunchDetails.notificationResponse!.actionId ==
+                  Constants.actionReject) {
+                isRejectFromPush = true;
               }
               break;
           }
@@ -176,10 +142,13 @@ Future<void> main() async {
               selectNotificationStream
                   .add(Constants.actionAnswerFromNotification);
             }
+            if (notificationResponse.actionId == Constants.actionReject) {
+              selectNotificationStream
+                  .add(Constants.actionRejectFromNotification);
+            }
             break;
         }
       },
-      onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
     );
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
@@ -243,18 +212,21 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (Platform.isAndroid) {
       selectNotificationStream.stream.listen((String? action) async {
         debugPrint('selectNotificationStream: action - $action');
-        if (action == Constants.actionAnswerFromNotification) {
-          ClientManager().callManager!.answer();
-        }
+        if (action == Constants.actionRejectFromNotification) {
+          ClientManager().callManager!.endCall(false);
+        } else {
+          if (action == Constants.actionAnswerFromNotification) {
+            ClientManager().callManager!.answer();
+          }
 
-        await Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (BuildContext context) => Call(
-            isIncomingCall: true,
-            isStringeeCall: ClientManager().callManager!.isStringeeCall,
-          ),
-        ));
+          await Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (BuildContext context) => Call(
+              isIncomingCall: true,
+              isStringeeCall: ClientManager().callManager!.isStringeeCall,
+            ),
+          ));
+        }
       });
-      ClientManager().initFromClient();
       initAndConnectClient();
     } else {
       initAndConnectClient();
@@ -274,34 +246,46 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     }, onIncomingCall: () {
       if (Platform.isIOS ||
           (_isPermissionGranted && !ClientManager().isAppInBackground)) {
-        if (isAnswerFromPush) {
-          ClientManager().callManager!.answer();
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Call(
-              isIncomingCall: true,
-              isStringeeCall: true,
+        if (isRejectFromPush) {
+          ClientManager().callManager!.endCall(false);
+          isRejectFromPush = false;
+        } else {
+          if (isAnswerFromPush) {
+            ClientManager().callManager!.answer();
+            isAnswerFromPush = false;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Call(
+                isIncomingCall: true,
+                isStringeeCall: true,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     }, onIncomingCall2: () {
       if (Platform.isIOS ||
           (_isPermissionGranted && !ClientManager().isAppInBackground)) {
-        if (isAnswerFromPush) {
-          ClientManager().callManager!.answer();
-        }
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => Call(
-              isIncomingCall: true,
-              isStringeeCall: false,
+        if (isRejectFromPush) {
+          ClientManager().callManager!.endCall(false);
+          isRejectFromPush = false;
+        } else {
+          if (isAnswerFromPush) {
+            ClientManager().callManager!.answer();
+            isAnswerFromPush = false;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Call(
+                isIncomingCall: true,
+                isStringeeCall: false,
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     }));
     ClientManager().connect();
