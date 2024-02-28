@@ -31,7 +31,10 @@ dependencies:
 
   #for ios
   uuid: ^4.3.3
-  callkeep: ^0.3.3
+  callkeep:
+    git:
+      url: https://github.com/stringeecom/callkeep.git
+      ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
 
   #for android
   permission_handler: ^11.2.0
