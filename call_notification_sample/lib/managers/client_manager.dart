@@ -1,14 +1,17 @@
 import 'dart:io';
-
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:ios_call_notification_sample/managers/callkeep_manager.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../listener/connection_listener.dart';
 import 'call_manager.dart';
 
 class ClientManager {
-  ClientManager._privateConstructor();
+  ClientManager._privateConstructor() {
+    CallkeepManager.shared?.configureCallKeep();
+  }
 
   static ClientManager? _instance;
 
@@ -18,8 +21,7 @@ class ClientManager {
   }
 
   bool isInCall = false;
-  String token =
-      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDYwMDM1NjUzMDEiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwidXNlcklkIjoidXNlcjIiLCJleHAiOjE3Mzc1Mzk1NjV9.iPDwwG74XabcmVGZhoEAzWP8WmaebBoJj6blKGy8uEA';
+  String token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDk2MTQ1MjciLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzEyMjA2NTI3LCJ1c2VySWQiOiIxMTExMSJ9.m9rPHB9dFcd7RCr3k7qtQls-rwfxZMj7Bap0_kkKaUI';
   bool isAppInBackground = false;
   ConnectionListener? _listener;
   StringeeClient? _stringeeClient;
@@ -34,6 +36,9 @@ class ClientManager {
         debugPrint('onConnect: $userId');
         if (_listener != null) {
           _listener!.onConnect('Connected as $userId');
+        }
+        if (Platform.isIOS) {
+          registerCallPush(CallkeepManager.shared?.pushToken ?? '');
         }
         if (Platform.isAndroid) {
           ///Register push with firebase token
@@ -97,6 +102,11 @@ class ClientManager {
 
   void registerEvent(ConnectionListener listener) {
     _listener = listener;
+  }
+
+  void registerCallPush(String token) {
+    _stringeeClient?.registerPush(token, isVoip: true, isProduction: false).then(
+            (value) => { debugPrint( 'Register push ${token} --- ${value.toString()}')});
   }
 
   void release() {

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:ios_call_notification_sample/managers/callkeep_manager.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../listener/call_listener.dart';
 import 'client_manager.dart';
+import 'dart:io' show Platform;
 
 class CallManager {
   CallManager._privateConstructor();
@@ -65,6 +67,8 @@ class CallManager {
     StringeeCall2? stringeeCall2,
   }) {
     ClientManager().isInCall = true;
+    debugPrint('initializedIncomingCall');
+    CallkeepManager.shared?.reportIncomingCallIfNeeded(isStringeeCall, stringeeCall, stringeeCall2).then((value) => null);
     _isStringeeCall = isStringeeCall;
     if (_isStringeeCall) {
       _stringeeCall = stringeeCall;
@@ -263,10 +267,20 @@ class CallManager {
       release();
       return;
     }
+
+    if (Platform.isIOS) {
+      CallkeepManager.shared?.answerCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
+      {debugPrint('end call keep')});
+    }
+
     if (_isStringeeCall) {
-      _stringeeCall!.answer().then(handleAnswerResult);
+      if (_signalingState == StringeeSignalingState.calling || _signalingState == StringeeSignalingState.calling) {
+        _stringeeCall!.answer().then(handleAnswerResult);
+      }
     } else {
-      _stringeeCall2!.answer().then(handleAnswerResult);
+      if (_isStringeeCall == StringeeSignalingState.calling || _signalingState == StringeeSignalingState.calling) {
+        _stringeeCall2!.answer().then(handleAnswerResult);
+      }
     }
   }
 
@@ -317,7 +331,14 @@ class CallManager {
       release();
       return;
     }
+
+    if (Platform.isIOS) {
+      CallkeepManager.shared?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
+      {debugPrint('end call keep')});
+    }
+
     if (_isStringeeCall) {
+
       if (isHangUp) {
         _stringeeCall!.hangup().then(handleHangUpResult);
       } else {
@@ -335,6 +356,8 @@ class CallManager {
     }
     release();
   }
+
+
 
   void handleHangUpResult(Map<dynamic, dynamic> result) {
     debugPrint('hangup: $result');
@@ -446,6 +469,8 @@ class CallManager {
 
   void release() {
     debugPrint('release callManager');
+    CallkeepManager.shared?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
+    {debugPrint('end call keep')});
     ClientManager().isInCall = false;
     if (_isStringeeCall) {
       if (_stringeeCall != null) {
@@ -502,5 +527,19 @@ class CallManager {
       }
     }
     return from;
+  }
+
+  (String, int)? currentCallIdAndSerial() {
+    if (_isStringeeCall) {
+      if (_stringeeCall == null) {
+        return null;
+      }
+      return (_stringeeCall?.id ?? '', _stringeeCall?.serial ?? 1);
+    } else {
+      if (_stringeeCall2 == null) {
+        return null;
+      }
+      return (_stringeeCall2?.id ?? '', _stringeeCall2?.serial ?? 1);
+    }
   }
 }
