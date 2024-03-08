@@ -90,7 +90,7 @@ class _CallState extends State<Call> {
         setState(() {
           _status = status.name;
         });
-        if (status == CallStatus.started && !widget._isVideoCall) {
+        if (status == CallStatus.started) {
           startCallTimer();
         }
         if (status == CallStatus.busy || status == CallStatus.ended) {
