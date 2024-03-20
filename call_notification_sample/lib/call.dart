@@ -55,7 +55,7 @@ class Call extends StatefulWidget {
   }
 }
 
-class _CallState extends State<Call> {
+class _CallState extends State<Call> with WidgetsBindingObserver {
   late String _status;
   late String _time = '00:00';
   late bool _isMicOn;
@@ -68,6 +68,7 @@ class _CallState extends State<Call> {
   @override
   void dispose() {
     super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     if (_timer != null) {
       _timer!.cancel();
     }
@@ -75,16 +76,25 @@ class _CallState extends State<Call> {
         overlays: SystemUiOverlay.values);
   }
 
+  @override void didChangeAppLifecycleState(AppLifecycleState state) {
+    // TODO: implement didChangeAppLifecycleState
+    super.didChangeAppLifecycleState(state);
+    CallManager manager = CallManager();
+    if (manager.stringeeCall == null && manager.stringeeCall2 == null) {
+      dismissCallingView();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
         overlays: [SystemUiOverlay.bottom]);
     _status = widget._callManager!.callStatus.name;
     _isMicOn = widget._callManager!.isMicOn;
     _isVideoEnable = widget._callManager!.isVideoEnable;
     _isSpeaker = widget._callManager!.isSpeakerOn;
-
     widget._callManager!.registerEvent(CallListener(
       onCallStatus: (status) {
         setState(() {
@@ -170,7 +180,9 @@ class _CallState extends State<Call> {
 
   void dismissCallingView() {
     widget._callManager!.release();
-    Navigator.pop(context);
+    Navigator.popUntil(context, (route) {
+      return route.isFirst;
+    });
   }
 
   void startCallTimer() {

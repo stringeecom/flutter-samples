@@ -45,6 +45,8 @@ class CallManager {
 
   bool get isStringeeCall => _isStringeeCall;
 
+  CallListener? get callListener => _callListener;
+
   void initializedOutgoingCall(
       String to, bool isVideoCall, bool isStringeeCall) {
     ClientManager().isInCall = true;
@@ -66,6 +68,7 @@ class CallManager {
     StringeeCall? stringeeCall,
     StringeeCall2? stringeeCall2,
   }) {
+    callListener?.onCallStatus(CallStatus.ended);
     ClientManager().isInCall = true;
     debugPrint('initializedIncomingCall');
     if (Platform.isIOS) {

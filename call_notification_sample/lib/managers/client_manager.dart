@@ -23,7 +23,8 @@ class ClientManager {
   }
 
   bool isInCall = false;
-  String token = 'PUT_YOUR_TOKEN_HERE';
+  //String token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MTA5MTczNDgiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzEzNTA5MzQ4LCJ1c2VySWQiOiJpb3MyIn0.OVEH7acsrGJk_NJ_WKfdJVp3ZNFbaGm88WXT5fDpP08';
+  String token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MTA5MTcyOTgiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzEzNTA5Mjk4LCJ1c2VySWQiOiJpb3MxIn0.8gF7myCvT85CByIxExFNrcbs-DqrGUvt4gbBTEj5-Fc';
   bool isAppInBackground = false;
   ConnectionListener? _listener;
   StringeeClient? _stringeeClient;
