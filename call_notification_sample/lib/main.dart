@@ -16,9 +16,14 @@ import 'listener/connection_listener.dart';
 import 'managers/client_manager.dart';
 import 'view/main_button.dart';
 
+bool _initialized = false;
+
 @pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  if (!_initialized) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    _initialized = true;
+  }
   debugPrint("Handling a background message: ${remoteMessage.data}");
 
   Map<dynamic, dynamic> notiData = remoteMessage.data;
@@ -150,8 +155,10 @@ Future<void> main() async {
         }
       },
     );
-    await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform);
+    if (!_initialized) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      _initialized = true;
+    }
     FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
   }
 

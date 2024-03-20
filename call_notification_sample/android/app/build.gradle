@@ -40,7 +40,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace 'com.stringee.call_notification_sample'
-    compileSdkVersion 33
+    compileSdk 34
     ndkVersion flutter.ndkVersion
 
     compileOptions {

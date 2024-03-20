@@ -10,7 +10,9 @@ import 'call_manager.dart';
 
 class ClientManager {
   ClientManager._privateConstructor() {
-    CallkeepManager.shared?.configureCallKeep();
+    if (Platform.isIOS) {
+      CallkeepManager.shared?.configureCallKeep();
+    }
   }
 
   static ClientManager? _instance;
@@ -21,8 +23,7 @@ class ClientManager {
   }
 
   bool isInCall = false;
-  //String token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDk4ODMwMDAiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzEyNDc1MDAwLCJ1c2VySWQiOiIyMjIyMiJ9.naDJAmExQf2hu_ArjfQcC1uEYpq1Z4fysGzne3M5gPk';
-  String token = 'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MDk2MTQ1MjciLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwiZXhwIjoxNzEyMjA2NTI3LCJ1c2VySWQiOiIxMTExMSJ9.m9rPHB9dFcd7RCr3k7qtQls-rwfxZMj7Bap0_kkKaUI';
+  String token = 'PUT_YOUR_TOKEN_HERE';
   bool isAppInBackground = false;
   ConnectionListener? _listener;
   StringeeClient? _stringeeClient;
@@ -107,7 +108,7 @@ class ClientManager {
 
   void registerCallPush(String token) {
     _stringeeClient?.registerPush(token, isVoip: true, isProduction: false).then(
-            (value) => { debugPrint( 'Register push ${token} --- ${value.toString()}')});
+            (value) => { debugPrint( 'Register push $token --- ${value.toString()}')});
   }
 
   void release() {

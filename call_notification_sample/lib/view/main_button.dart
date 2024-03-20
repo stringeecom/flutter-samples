@@ -14,7 +14,6 @@ class MainButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Container(
       height: 40.0,
       width: 175.0,

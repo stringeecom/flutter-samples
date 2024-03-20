@@ -68,7 +68,12 @@ class CallManager {
   }) {
     ClientManager().isInCall = true;
     debugPrint('initializedIncomingCall');
-    CallkeepManager.shared?.reportIncomingCallIfNeeded(isStringeeCall, stringeeCall, stringeeCall2).then((value) => null);
+    if (Platform.isIOS) {
+      CallkeepManager.shared
+          ?.reportIncomingCallIfNeeded(
+              isStringeeCall, stringeeCall, stringeeCall2)
+          .then((value) => null);
+    }
     _isStringeeCall = isStringeeCall;
     if (_isStringeeCall) {
       _stringeeCall = stringeeCall;
@@ -269,16 +274,19 @@ class CallManager {
     }
 
     if (Platform.isIOS) {
-      CallkeepManager.shared?.answerCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
-      {debugPrint('end call keep')});
+      CallkeepManager.shared
+          ?.answerCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          .then((value) => {debugPrint('end call keep')});
     }
 
     if (_isStringeeCall) {
-      if (_signalingState == StringeeSignalingState.calling || _signalingState == StringeeSignalingState.calling) {
+      if (_signalingState == StringeeSignalingState.calling ||
+          _signalingState == StringeeSignalingState.calling) {
         _stringeeCall!.answer().then(handleAnswerResult);
       }
     } else {
-      if (_isStringeeCall == StringeeSignalingState.calling || _signalingState == StringeeSignalingState.calling) {
+      if (_signalingState == StringeeSignalingState.calling ||
+          _signalingState == StringeeSignalingState.calling) {
         _stringeeCall2!.answer().then(handleAnswerResult);
       }
     }
@@ -292,6 +300,7 @@ class CallManager {
       }
       release();
     } else {
+      setUpSpeakerBeforeCall();
       _signalingState = StringeeSignalingState.answered;
       _callStatus = CallStatus.starting;
       if (_mediaState == StringeeMediaState.connected) {
@@ -333,12 +342,12 @@ class CallManager {
     }
 
     if (Platform.isIOS) {
-      CallkeepManager.shared?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
-      {debugPrint('end call keep')});
+      CallkeepManager.shared
+          ?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          .then((value) => {debugPrint('end call keep')});
     }
 
     if (_isStringeeCall) {
-
       if (isHangUp) {
         _stringeeCall!.hangup().then(handleHangUpResult);
       } else {
@@ -356,8 +365,6 @@ class CallManager {
     }
     release();
   }
-
-
 
   void handleHangUpResult(Map<dynamic, dynamic> result) {
     debugPrint('hangup: $result');
@@ -469,8 +476,11 @@ class CallManager {
 
   void release() {
     debugPrint('release callManager');
-    CallkeepManager.shared?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2).then((value) =>
-    {debugPrint('end call keep')});
+    if (Platform.isIOS) {
+      CallkeepManager.shared
+          ?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          .then((value) => {debugPrint('end call keep')});
+    }
     ClientManager().isInCall = false;
     if (_isStringeeCall) {
       if (_stringeeCall != null) {

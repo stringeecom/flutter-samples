@@ -489,7 +489,7 @@ class _CallState extends State<Call> {
     );
 
     Widget inVideoCallWidget = Container(
-      color: Color.fromRGBO(26, 87, 141, 1.0),
+      color: Colors.black,
       child: Stack(
         children: [
           remoteView,
