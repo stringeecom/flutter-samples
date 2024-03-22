@@ -4,58 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'listener/call_listener.dart';
-import 'managers/call_manager.dart';
-import 'managers/client_manager.dart';
+import '../wrapper/stringee_wrapper.dart';
 
-class Call extends StatefulWidget {
-  late String? _to;
-  late bool _isVideoCall = false;
-  late bool _isIncomingCall = false;
-  late String? _callee;
-  late CallManager? _callManager;
-
+class CallWidget extends StatefulWidget {
   static String routeName = 'Call';
 
-  Call({
+  CallWidget({
     super.key,
-    String? to,
-    bool? isVideoCall,
-    bool? isIncomingCall,
-    bool? isStringeeCall,
-  }) {
-    _isIncomingCall = isIncomingCall ?? false;
-    _to = to;
-    isVideoCall ??= false;
-    if (!_isIncomingCall) {
-      ClientManager().callManager = CallManager();
-    }
-    _callManager = ClientManager().callManager;
-
-    _isVideoCall = _isIncomingCall ? _callManager!.isVideoCall : isVideoCall;
-
-    if (!_isIncomingCall) {
-      if (_callManager!.isCallNotInitialized()) {
-        _callManager!.initializedOutgoingCall(
-            _to!, _isVideoCall, isStringeeCall ?? false);
-      }
-      _callee = _to;
-    } else {
-      if (isStringeeCall ?? false) {
-        _callee = _callManager!.getFrom();
-      } else {
-        _callee = _callManager!.getFrom();
-      }
-    }
-  }
+  });
 
   @override
   State<StatefulWidget> createState() {
-    return _CallState();
+    return _CallWidgetState();
   }
 }
 
-class _CallState extends State<Call> with WidgetsBindingObserver {
+class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   late String _status;
   late String _time = '00:00';
   late bool _isMicOn;
@@ -76,11 +40,10 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
         overlays: SystemUiOverlay.values);
   }
 
-  @override void didChangeAppLifecycleState(AppLifecycleState state) {
-    // TODO: implement didChangeAppLifecycleState
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    CallManager manager = CallManager();
-    if (manager.stringeeCall == null && manager.stringeeCall2 == null) {
+    if (CallWrapper().isCallNotInitialized()) {
       dismissCallingView();
     }
   }
@@ -91,11 +54,11 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
         overlays: [SystemUiOverlay.bottom]);
-    _status = widget._callManager!.callStatus.name;
-    _isMicOn = widget._callManager!.isMicOn;
-    _isVideoEnable = widget._callManager!.isVideoEnable;
-    _isSpeaker = widget._callManager!.isSpeakerOn;
-    widget._callManager!.registerEvent(CallListener(
+    _status = CallWrapper().callStatus.name;
+    _isMicOn = CallWrapper().isMicOn;
+    _isVideoEnable = CallWrapper().isVideoEnable;
+    _isSpeaker = CallWrapper().isSpeakerOn;
+    CallWrapper().registerEvent(CallListener(
       onCallStatus: (status) {
         setState(() {
           _status = status.name;
@@ -106,9 +69,6 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
         if (status == CallStatus.busy || status == CallStatus.ended) {
           dismissCallingView();
         }
-      },
-      onError: (message) {
-        dismissCallingView();
       },
       onReceiveLocalStream: () {
         setState(() {
@@ -145,41 +105,38 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
         });
       },
     ));
-    if (!widget._isIncomingCall) {
-      widget._callManager!.makeCall();
-    }
   }
 
   void switchPress() {
-    widget._callManager!.switchCamera();
+    CallWrapper().switchCamera();
   }
 
   void mutePress() {
-    widget._callManager!.mute();
+    CallWrapper().mute();
   }
 
   void speakerPress() {
-    widget._callManager!.changeSpeaker();
+    CallWrapper().changeSpeaker();
   }
 
   void videoPress() {
-    widget._callManager!.enableVideo();
+    CallWrapper().enableVideo();
   }
 
   void answerCall() {
-    widget._callManager!.answer();
+    CallWrapper().answer();
   }
 
   void endPress() {
-    widget._callManager!.endCall(true);
+    CallWrapper().endCall(true);
   }
 
   void rejectPress() {
-    widget._callManager!.endCall(false);
+    CallWrapper().endCall(false);
   }
 
   void dismissCallingView() {
-    widget._callManager!.release();
+    CallWrapper().release();
     Navigator.popUntil(context, (route) {
       return route.isFirst;
     });
@@ -268,10 +225,10 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
     );
 
     Widget localView = (_receivedLocalStream &&
-            widget._isVideoCall &&
-            widget._callManager!.getCallId().isNotEmpty)
+            CallWrapper().isVideoCall &&
+            CallWrapper().getCallId().isNotEmpty)
         ? StringeeVideoView(
-            widget._callManager!.getCallId(),
+            CallWrapper().getCallId(),
             true,
             alignment: Alignment.topLeft,
             margin: const EdgeInsets.only(top: 80.0, left: 20.0),
@@ -290,10 +247,10 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
           );
 
     Widget remoteView = (_receivedRemoteStream &&
-            widget._isVideoCall &&
-            widget._callManager!.getCallId().isNotEmpty)
+            CallWrapper().isVideoCall &&
+            CallWrapper().getCallId().isNotEmpty)
         ? StringeeVideoView(
-            widget._callManager!.getCallId(),
+            CallWrapper().getCallId(),
             false,
             isMirror: false,
             scalingType: ScalingType.fit,
@@ -315,7 +272,9 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
           radius: 57,
           backgroundColor: const Color.fromRGBO(64, 182, 73, 1.0),
           child: Text(
-            widget._callee!.characters.first.toUpperCase(),
+            CallWrapper().callee().isNotEmpty
+                ? CallWrapper().callee().characters.first.toUpperCase()
+                : '',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 50.0,
@@ -368,7 +327,7 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
     Widget callee = Container(
       margin: const EdgeInsets.only(top: 15.0),
       child: Text(
-        widget._callee!,
+        CallWrapper().callee(),
         style: const TextStyle(
           color: Colors.white,
           fontSize: 22.0,
@@ -542,7 +501,7 @@ class _CallState extends State<Call> with WidgetsBindingObserver {
     return Scaffold(
       body: _status == CallStatus.incoming.name
           ? incomingCallWidget
-          : widget._isVideoCall
+          : CallWrapper().isVideoCall
               ? inVideoCallWidget
               : inVoiceCallWidget,
     );

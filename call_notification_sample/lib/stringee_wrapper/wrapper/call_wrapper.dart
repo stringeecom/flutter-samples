@@ -1,18 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:ios_call_notification_sample/managers/callkeep_manager.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
-
-import '../listener/call_listener.dart';
-import 'client_manager.dart';
 import 'dart:io' show Platform;
 
-class CallManager {
-  CallManager._privateConstructor();
+import 'package:flutter/material.dart';
+import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-  static CallManager? _instance;
+import 'stringee_wrapper.dart';
 
-  factory CallManager() {
-    _instance ??= CallManager._privateConstructor();
+class CallWrapper {
+  CallWrapper._privateConstructor();
+
+  static CallWrapper? _instance;
+
+  factory CallWrapper() {
+    _instance ??= CallWrapper._privateConstructor();
     return _instance!;
   }
 
@@ -27,7 +26,6 @@ class CallManager {
   late bool _isSpeakerOn = false;
   late bool _isVideoEnable = false;
   bool _isMicOn = true;
-  bool _isStringeeCall = true;
 
   CallStatus get callStatus => _callStatus;
 
@@ -43,87 +41,20 @@ class CallManager {
 
   StringeeCall2? get stringeeCall2 => _stringeeCall2;
 
-  bool get isStringeeCall => _isStringeeCall;
-
   CallListener? get callListener => _callListener;
 
-  void initializedOutgoingCall(
-      String to, bool isVideoCall, bool isStringeeCall) {
-    ClientManager().isInCall = true;
-    if (isStringeeCall) {
-      _stringeeCall = StringeeCall(ClientManager().stringeeClient!);
+  String callee() {
+    if (_stringeeCall != null) {
+      return _stringeeCall!.from!;
+    } else if (_stringeeCall2 != null) {
+      return _stringeeCall2!.from!;
     } else {
-      _stringeeCall2 = StringeeCall2(ClientManager().stringeeClient!);
+      return '';
     }
-    _isStringeeCall = isStringeeCall;
-    _userId = to;
-    _isVideoCall = isVideoCall;
-    _isSpeakerOn = isVideoCall;
-    _isVideoEnable = isVideoCall;
-    registerCallEvent();
-  }
-
-  void initializedIncomingCall(
-    bool isStringeeCall, {
-    StringeeCall? stringeeCall,
-    StringeeCall2? stringeeCall2,
-  }) {
-    callListener?.onCallStatus(CallStatus.ended);
-    ClientManager().isInCall = true;
-    debugPrint('initializedIncomingCall');
-    if (Platform.isIOS) {
-      CallkeepManager.shared
-          ?.reportIncomingCallIfNeeded(
-              isStringeeCall, stringeeCall, stringeeCall2)
-          .then((value) => null);
-    }
-    _isStringeeCall = isStringeeCall;
-    if (_isStringeeCall) {
-      _stringeeCall = stringeeCall;
-      _userId = stringeeCall!.from!;
-    } else {
-      _stringeeCall2 = stringeeCall2;
-      _userId = stringeeCall2!.from!;
-    }
-    _isVideoCall = _isStringeeCall
-        ? stringeeCall!.isVideoCall
-        : stringeeCall2!.isVideoCall;
-    _isSpeakerOn = _isStringeeCall
-        ? stringeeCall!.isVideoCall
-        : stringeeCall2!.isVideoCall;
-    _isVideoEnable = _isStringeeCall
-        ? stringeeCall!.isVideoCall
-        : stringeeCall2!.isVideoCall;
-    _callStatus = CallStatus.incoming;
-    registerCallEvent();
   }
 
   void registerEvent(CallListener callListener) {
     _callListener = callListener;
-  }
-
-  void registerCallEvent() {
-    if (_isStringeeCall) {
-      _stringeeCall!.registerEvent(StringeeCallListener(
-        onChangeSignalingState: handleOnChangeSignalingState,
-        onChangeMediaState: handleOnChangeMediaState,
-        onReceiveCallInfo: handleOnReceiveCallInfo,
-        onHandleOnAnotherDevice: handleOnHandleOnAnotherDevice,
-        onReceiveLocalStream: handleOnReceiveLocalStream,
-        onReceiveRemoteStream: handleOnReceiveRemoteStream,
-        onChangeAudioDevice: handleOnChangeAudioDevice,
-      ));
-    } else {
-      _stringeeCall2!.registerEvent(StringeeCall2Listener(
-        onChangeSignalingState: handleOnChangeSignalingState,
-        onChangeMediaState: handleOnChangeMediaState,
-        onReceiveCallInfo: handleOnReceiveCallInfo,
-        onHandleOnAnotherDevice: handleOnHandleOnAnotherDevice,
-        onReceiveLocalStream: handleOnReceiveLocalStream,
-        onReceiveRemoteStream: handleOnReceiveRemoteStream,
-        onChangeAudioDevice: handleOnChangeAudioDevice,
-      ));
-    }
   }
 
   void handleOnChangeSignalingState(StringeeSignalingState signalingState) {
@@ -154,6 +85,9 @@ class CallManager {
     if (_callListener != null) {
       _callListener!.onCallStatus(_callStatus);
     }
+    if (StringeeWrapper().listener != null) {
+      StringeeWrapper().listener!.onCallSignalingStateChange(signalingState);
+    }
   }
 
   void handleOnChangeMediaState(StringeeMediaState mediaState) {
@@ -170,6 +104,9 @@ class CallManager {
         break;
       case StringeeMediaState.disconnected:
         break;
+    }
+    if (StringeeWrapper().listener != null) {
+      StringeeWrapper().listener!.onCallMediaStateChane(mediaState);
     }
   }
 
@@ -207,63 +144,117 @@ class CallManager {
         'onChangeAudioDevice: selectedAudioDevice - $selectedAudioDevice - availableAudioDevices - $availableAudioDevices');
   }
 
-  void makeCall() {
+  void makeCall(String from, String to, bool isVideoCall,
+      CallBackListener callBackListener) {
+    isInCall = true;
+    if (isVideoCall) {
+      _stringeeCall2 = StringeeCall2(StringeeWrapper().stringeeClient!);
+    } else {
+      _stringeeCall = StringeeCall(StringeeWrapper().stringeeClient!);
+    }
+
+    _userId = to;
+    _isVideoCall = isVideoCall;
+    _isSpeakerOn = isVideoCall;
+    _isVideoEnable = isVideoCall;
+    registerCallEvent();
     if (isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
+      if (callBackListener.onError != null) {
+        callBackListener.onError!('call is not initialized');
+      }
       release();
       return;
     }
-    if (_isStringeeCall) {
-      _stringeeCall!
-          .makeCallFromParams(MakeCallParams(
-              ClientManager().stringeeClient!.userId!, _userId,
-              isVideoCall: _isVideoCall))
-          .then(handleMakeCallResult);
-    } else {
+    if (isVideoCall) {
       _stringeeCall2!
-          .makeCallFromParams(MakeCallParams(
-              ClientManager().stringeeClient!.userId!, _userId,
-              isVideoCall: _isVideoCall))
-          .then(handleMakeCallResult);
+          .makeCallFromParams(
+              MakeCallParams(from, _userId, isVideoCall: _isVideoCall))
+          .then((value) => handleMakeCallResult(value, callBackListener));
+    } else {
+      _stringeeCall!
+          .makeCallFromParams(
+              MakeCallParams(from, _userId, isVideoCall: _isVideoCall))
+          .then((value) => handleMakeCallResult(value, callBackListener));
     }
   }
 
-  void handleMakeCallResult(Map<dynamic, dynamic> result) {
+  void handleMakeCallResult(
+      Map<dynamic, dynamic> result, CallBackListener callBackListener) {
     debugPrint('makeCall: $result');
-    if (!result['status']) {
-      if (_callListener != null) {
-        _callListener!.onError(result['message']);
+    if (result['status']) {
+      if (callBackListener.onSuccess != null) {
+        callBackListener.onSuccess!();
+      }
+      setUpSpeakerBeforeCall();
+    } else {
+      if (callBackListener.onError != null) {
+        callBackListener.onError!(result['message']);
       }
       release();
-    } else {
-      setUpSpeakerBeforeCall();
     }
   }
 
-  void initAnswer() {
-    if (isCallNotInitialized()) {
-      if (_callListener != null) {
-        _callListener!.onCallStatus(CallStatus.ended);
-      }
-      release();
-      return;
+  void initAnswer({StringeeCall? stringeeCall, StringeeCall2? stringeeCall2}) {
+    callListener?.onCallStatus(CallStatus.ended);
+    if (Platform.isIOS) {
+      CallkeepManager.shared
+          ?.reportIncomingCallIfNeeded(
+              stringeeCall != null, stringeeCall, stringeeCall2)
+          .then((value) => null);
     }
-    if (_isStringeeCall) {
+    if (stringeeCall != null) {
+      _stringeeCall = stringeeCall;
+      _userId = stringeeCall.from!;
+      _isVideoCall = stringeeCall.isVideoCall;
+      _isSpeakerOn = stringeeCall.isVideoCall;
+      _isVideoEnable = stringeeCall.isVideoCall;
       _stringeeCall!.initAnswer().then(handleInitAnswerResult);
-    } else {
+    } else if (stringeeCall2 != null) {
+      _stringeeCall2 = stringeeCall2;
+      _userId = stringeeCall2.from!;
+      _isVideoCall = stringeeCall2.isVideoCall;
+      _isSpeakerOn = stringeeCall2.isVideoCall;
+      _isVideoEnable = stringeeCall2.isVideoCall;
       _stringeeCall2!.initAnswer().then(handleInitAnswerResult);
     }
+    _callStatus = CallStatus.incoming;
+    registerCallEvent();
   }
 
   void handleInitAnswerResult(Map<dynamic, dynamic> result) {
     debugPrint('initAnswer: $result');
     if (!result['status']) {
       if (_callListener != null) {
-        _callListener!.onError(result['message']);
+        _callListener!.onCallStatus(CallStatus.ended);
       }
       release();
+    }
+  }
+
+  void registerCallEvent() {
+    if (_stringeeCall != null) {
+      _stringeeCall!.registerEvent(StringeeCallListener(
+        onChangeSignalingState: handleOnChangeSignalingState,
+        onChangeMediaState: handleOnChangeMediaState,
+        onReceiveCallInfo: handleOnReceiveCallInfo,
+        onHandleOnAnotherDevice: handleOnHandleOnAnotherDevice,
+        onReceiveLocalStream: handleOnReceiveLocalStream,
+        onReceiveRemoteStream: handleOnReceiveRemoteStream,
+        onChangeAudioDevice: handleOnChangeAudioDevice,
+      ));
+    } else if (_stringeeCall2 != null) {
+      _stringeeCall2!.registerEvent(StringeeCall2Listener(
+        onChangeSignalingState: handleOnChangeSignalingState,
+        onChangeMediaState: handleOnChangeMediaState,
+        onReceiveCallInfo: handleOnReceiveCallInfo,
+        onHandleOnAnotherDevice: handleOnHandleOnAnotherDevice,
+        onReceiveLocalStream: handleOnReceiveLocalStream,
+        onReceiveRemoteStream: handleOnReceiveRemoteStream,
+        onChangeAudioDevice: handleOnChangeAudioDevice,
+      ));
     }
   }
 
@@ -278,16 +269,17 @@ class CallManager {
 
     if (Platform.isIOS) {
       CallkeepManager.shared
-          ?.answerCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          ?.answerCallKeepIfNeed(
+              _stringeeCall != null, _stringeeCall, _stringeeCall2)
           .then((value) => {debugPrint('end call keep')});
     }
 
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       if (_signalingState == StringeeSignalingState.calling ||
           _signalingState == StringeeSignalingState.calling) {
         _stringeeCall!.answer().then(handleAnswerResult);
       }
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (_signalingState == StringeeSignalingState.calling ||
           _signalingState == StringeeSignalingState.calling) {
         _stringeeCall2!.answer().then(handleAnswerResult);
@@ -320,13 +312,13 @@ class CallManager {
       release();
       return;
     }
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       _stringeeCall!.setSpeakerphoneOn(_isSpeakerOn).then(
         (result) {
           debugPrint('setSpeakerphoneOn: $result');
         },
       );
-    } else {
+    } else if (_stringeeCall2 != null) {
       _stringeeCall2!.setSpeakerphoneOn(_isSpeakerOn).then(
         (result) {
           debugPrint('setSpeakerphoneOn: $result');
@@ -346,17 +338,18 @@ class CallManager {
 
     if (Platform.isIOS) {
       CallkeepManager.shared
-          ?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          ?.endCallKeepIfNeed(
+              _stringeeCall != null, _stringeeCall, _stringeeCall2)
           .then((value) => {debugPrint('end call keep')});
     }
 
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       if (isHangUp) {
         _stringeeCall!.hangup().then(handleHangUpResult);
       } else {
         _stringeeCall!.reject().then(handleRejectResult);
       }
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (isHangUp) {
         _stringeeCall2!.hangup().then(handleHangUpResult);
       } else {
@@ -385,9 +378,9 @@ class CallManager {
       release();
       return;
     }
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       _stringeeCall!.enableVideo(!_isVideoEnable).then(handleEnableVideoResult);
-    } else {
+    } else if (_stringeeCall2 != null) {
       _stringeeCall2!
           .enableVideo(!_isVideoEnable)
           .then(handleEnableVideoResult);
@@ -412,9 +405,9 @@ class CallManager {
       release();
       return;
     }
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       _stringeeCall!.mute(_isMicOn).then(handleMuteResult);
-    } else {
+    } else if (_stringeeCall2 != null) {
       _stringeeCall2!.mute(_isMicOn).then(handleMuteResult);
     }
   }
@@ -437,11 +430,11 @@ class CallManager {
       release();
       return;
     }
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       _stringeeCall!
           .setSpeakerphoneOn(!_isSpeakerOn)
           .then(handleChangeSpeakerResult);
-    } else {
+    } else if (_stringeeCall2 != null) {
       _stringeeCall2!
           .setSpeakerphoneOn(!_isSpeakerOn)
           .then(handleChangeSpeakerResult);
@@ -466,9 +459,9 @@ class CallManager {
       release();
       return;
     }
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       _stringeeCall!.switchCamera().then(handleSwitchCameraResult);
-    } else {
+    } else if (_stringeeCall2 != null) {
       _stringeeCall2!.switchCamera().then(handleSwitchCameraResult);
     }
   }
@@ -481,46 +474,42 @@ class CallManager {
     debugPrint('release callManager');
     if (Platform.isIOS) {
       CallkeepManager.shared
-          ?.endCallKeepIfNeed(_isStringeeCall, _stringeeCall, _stringeeCall2)
+          ?.endCallKeepIfNeed(
+              _stringeeCall != null, _stringeeCall, _stringeeCall2)
           .then((value) => {debugPrint('end call keep')});
     }
-    ClientManager().isInCall = false;
-    if (_isStringeeCall) {
+    isInCall = false;
+    if (_stringeeCall != null) {
       if (_stringeeCall != null) {
         _stringeeCall!.destroy();
       }
       _stringeeCall = null;
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (_stringeeCall2 != null) {
         _stringeeCall2!.destroy();
       }
       _stringeeCall2 = null;
     }
-    CallManager._instance = null;
+    CallWrapper._instance = null;
   }
 
   bool isCallNotInitialized() {
     bool isCallNotInitialized = true;
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       isCallNotInitialized = _stringeeCall == null;
-    } else {
+    } else if (_stringeeCall2 != null) {
       isCallNotInitialized = _stringeeCall2 == null;
-    }
-    if (isCallNotInitialized) {
-      if (_callListener != null) {
-        _callListener!.onError('call is not initialized');
-      }
     }
     return isCallNotInitialized;
   }
 
   String getCallId() {
     String callId = '';
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       if (stringeeCall != null) {
         callId = stringeeCall!.id!;
       }
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (stringeeCall2 != null) {
         callId = stringeeCall2!.id!;
       }
@@ -530,11 +519,11 @@ class CallManager {
 
   String getFrom() {
     String from = '';
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       if (stringeeCall != null) {
         from = stringeeCall!.from!;
       }
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (stringeeCall2 != null) {
         from = stringeeCall2!.from!;
       }
@@ -543,16 +532,17 @@ class CallManager {
   }
 
   (String, int)? currentCallIdAndSerial() {
-    if (_isStringeeCall) {
+    if (_stringeeCall != null) {
       if (_stringeeCall == null) {
         return null;
       }
       return (_stringeeCall?.id ?? '', _stringeeCall?.serial ?? 1);
-    } else {
+    } else if (_stringeeCall2 != null) {
       if (_stringeeCall2 == null) {
         return null;
       }
       return (_stringeeCall2?.id ?? '', _stringeeCall2?.serial ?? 1);
     }
+    return null;
   }
 }

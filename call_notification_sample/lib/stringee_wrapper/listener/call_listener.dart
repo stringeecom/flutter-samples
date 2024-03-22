@@ -10,7 +10,6 @@ enum CallStatus {
 
 class CallListener {
   void Function(CallStatus status) onCallStatus;
-  void Function(String message) onError;
   void Function() onReceiveLocalStream;
   void Function() onReceiveRemoteStream;
   void Function(bool isOn) onSpeakerChange;
@@ -19,7 +18,6 @@ class CallListener {
 
   CallListener({
     required this.onCallStatus,
-    required this.onError,
     required this.onReceiveLocalStream,
     required this.onReceiveRemoteStream,
     required this.onSpeakerChange,

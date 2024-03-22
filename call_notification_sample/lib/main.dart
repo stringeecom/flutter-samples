@@ -1,28 +1,22 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:ios_call_notification_sample/managers/call_manager.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'call.dart';
-import 'constants/constants.dart';
 import 'firebase_options.dart';
-import 'listener/connection_listener.dart';
-import 'managers/client_manager.dart';
-import 'view/main_button.dart';
+import 'stringee_wrapper/wrapper/stringee_wrapper.dart';
 
 bool _initialized = false;
 
 @pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   if (!_initialized) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
     _initialized = true;
   }
   debugPrint("Handling a background message: ${remoteMessage.data}");
@@ -35,8 +29,8 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
       /// Create channel for notification
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
-        Constants.channelId, Constants.channelName,
-        channelDescription: Constants.channelDescription,
+        channelId, channelName,
+        channelDescription: channelDescription,
         importance: Importance.max,
         priority: Priority.high,
         category: AndroidNotificationCategory.call,
@@ -44,14 +38,14 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
         autoCancel: false,
         actions: <AndroidNotificationAction>[
           AndroidNotificationAction(
-            Constants.actionAnswer,
+            actionAnswer,
             'Answer',
             titleColor: Colors.green,
             showsUserInterface: true,
             cancelNotification: true,
           ),
           AndroidNotificationAction(
-            Constants.actionReject,
+            actionReject,
             'Reject',
             titleColor: Colors.redAccent,
             cancelNotification: true,
@@ -67,13 +61,13 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
 
       /// Show notification
       await flutterLocalNotificationsPlugin.show(
-        Constants.notificationId,
+        notificationId,
         'Incoming Call from ${data['from']['alias']}',
         data['from']['number'],
         platformChannelSpecifics,
       );
     } else if (data['callStatus'] == 'ended') {
-      flutterLocalNotificationsPlugin.cancel(Constants.notificationId);
+      flutterLocalNotificationsPlugin.cancel(notificationId);
     }
   }
 }
@@ -90,7 +84,7 @@ bool isRejectFromPush = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Platform.isAndroid) {
+  if (!isIOS) {
     final NotificationAppLaunchDetails? notificationAppLaunchDetails =
         await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
 
@@ -110,11 +104,11 @@ Future<void> main() async {
                   'selectedNotificationAction - ${notificationAppLaunchDetails.notificationResponse!.actionId}');
               // Handle click button answer notification when app killed
               if (notificationAppLaunchDetails.notificationResponse!.actionId ==
-                  Constants.actionAnswer) {
+                  actionAnswer) {
                 isAnswerFromPush = true;
               }
               if (notificationAppLaunchDetails.notificationResponse!.actionId ==
-                  Constants.actionReject) {
+                  actionReject) {
                 isRejectFromPush = true;
               }
               break;
@@ -138,26 +132,25 @@ Future<void> main() async {
         switch (notificationResponse.notificationResponseType) {
           case NotificationResponseType.selectedNotification:
             // handle click on notification when app in background
-            selectNotificationStream.add(Constants.actionClickNotification);
+            selectNotificationStream.add(actionClickNotification);
             break;
           case NotificationResponseType.selectedNotificationAction:
             // handle click button answer on notification when app in background
             debugPrint(
                 'onDidReceiveNotificationResponse - selectedNotificationAction - ${notificationResponse.actionId}');
-            if (notificationResponse.actionId == Constants.actionAnswer) {
-              selectNotificationStream
-                  .add(Constants.actionAnswerFromNotification);
+            if (notificationResponse.actionId == actionAnswer) {
+              selectNotificationStream.add(actionAnswerFromNotification);
             }
-            if (notificationResponse.actionId == Constants.actionReject) {
-              selectNotificationStream
-                  .add(Constants.actionRejectFromNotification);
+            if (notificationResponse.actionId == actionReject) {
+              selectNotificationStream.add(actionRejectFromNotification);
             }
             break;
         }
       },
     );
     if (!_initialized) {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
       _initialized = true;
     }
     FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
@@ -191,17 +184,19 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String _connectStatus = 'Not connected...';
-  bool _isPermissionGranted = false;
   String _to = "";
+  String _userId = "";
+  String _token =
+      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MTA5ODgyMzI3NjAiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwidXNlcklkIjoidXNlcjQiLCJleHAiOjE3NDI1MjQyMzJ9.YJ3-FrSIEajmt6cVayrUOCJQiN3tNXO7A38LE-0IiPY';
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint("didChangeAppLifecycle - $state");
     if (state == AppLifecycleState.resumed) {
-      flutterLocalNotificationsPlugin.cancel(Constants.notificationId);
-      ClientManager().isAppInBackground = false;
+      flutterLocalNotificationsPlugin.cancel(notificationId);
+      isAppInBackground = false;
     } else if (state == AppLifecycleState.inactive) {
-      ClientManager().isAppInBackground = true;
+      isAppInBackground = true;
     }
   }
 
@@ -217,114 +212,106 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    if (Platform.isAndroid) {
+    if (!isIOS) {
       selectNotificationStream.stream.listen((String? action) async {
         debugPrint('selectNotificationStream: action - $action');
-        if (action == Constants.actionRejectFromNotification) {
-          ClientManager().callManager!.endCall(false);
-        } else {
-          if (action == Constants.actionAnswerFromNotification) {
-            ClientManager().callManager!.answer();
-          }
-
-          await Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (BuildContext context) => Call(
-              isIncomingCall: true,
-              isStringeeCall: ClientManager().callManager!.isStringeeCall,
-            ),
-          ));
+        if (action == actionRejectFromNotification) {
+          CallWrapper().endCall(false);
+        } else if (action == actionAnswerFromNotification) {
+          CallWrapper().answer();
         }
       });
-      initAndConnectClient();
-    } else {
-      initAndConnectClient();
     }
+    initAndConnectClient();
   }
 
   void initAndConnectClient() async {
-    if (Platform.isAndroid) {
-      if (!_isPermissionGranted) {
-        _isPermissionGranted = await requestPermissions();
-      }
+    if (!isIOS) {
+      await StringeeWrapper().requestPermissions();
     }
-    ClientManager().registerEvent(ConnectionListener(onConnect: (status) {
-      setState(() {
-        _connectStatus = status;
-      });
-    }, onIncomingCall: () {
-      if (Platform.isIOS ||
-          (_isPermissionGranted && !ClientManager().isAppInBackground)) {
-        if (isRejectFromPush) {
-          ClientManager().callManager!.endCall(false);
-          isRejectFromPush = false;
-        } else {
-          if (isAnswerFromPush) {
-            ClientManager().callManager!.answer();
-            isAnswerFromPush = false;
-          }
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Call(
-                isIncomingCall: true,
-                isStringeeCall: true,
-              ),
-            ),
-          );
-        }
-      }
-    }, onIncomingCall2: () {
-      if (Platform.isIOS ||
-          (_isPermissionGranted && !ClientManager().isAppInBackground)) {
-        if (isRejectFromPush) {
-          ClientManager().callManager!.endCall(false);
-          isRejectFromPush = false;
-        } else {
-          if (isAnswerFromPush) {
-            ClientManager().callManager!.answer();
-            isAnswerFromPush = false;
-          }
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Call(
-                isIncomingCall: true,
-                isStringeeCall: false,
-              ),
-            ),
-          );
-        }
-      }
-    }));
-    ClientManager().connect();
-  }
-
-  Future<bool> requestPermissions() async {
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-    List<Permission> permissions = [
-      Permission.camera,
-      Permission.microphone,
-    ];
-    if (androidInfo.version.sdkInt >= 31) {
-      permissions.add(Permission.bluetoothConnect);
-    }
-    if (androidInfo.version.sdkInt >= 33) {
-      permissions.add(Permission.notification);
-    }
-
-    Map<Permission, PermissionStatus> permissionsStatus =
-        await permissions.request();
-    debugPrint('Permission statuses - $permissionsStatus');
-    bool isAllGranted = true;
-    permissionsStatus.forEach((key, value) {
-      if (value != PermissionStatus.granted) {
+    StringeeWrapper().registerEvent(StringeeListener(
+      onConnected: (userId) {
         setState(() {
-          isAllGranted = false;
+          _connectStatus = 'Connected as $userId';
+          _userId = userId;
         });
-      }
-    });
-    return isAllGranted;
+        if (isIOS) {
+          StringeeWrapper().registerPush(
+              CallkeepManager.shared?.pushToken ?? '',
+              isVoip: true,
+              isProduction: false);
+        } else {
+          FirebaseMessaging.instance.getToken().then((token) {
+            StringeeWrapper().registerPush(token!);
+          });
+        }
+      },
+      onDisconnected: () {
+        setState(() {
+          _connectStatus = 'Disconnected';
+        });
+      },
+      onConnectError: (code, message) {
+        setState(() {
+          _connectStatus = 'Connect fail: $message';
+        });
+      },
+      onRequestNewToken: () {
+        /// Get new token from server
+        /// After that, call method connect again
+        /// Example:
+        /// String newToken = await getNewToken();
+        /// StringeeWrapper().connect(newToken);
+      },
+      onCallSignalingStateChange: (StringeeSignalingState signalingState) {
+        debugPrint('onCallSignalingStateChange: $signalingState');
+      },
+      onCallMediaStateChane: (StringeeMediaState mediaState) {
+        debugPrint('onCallMediaStateChane: $mediaState');
+      },
+      onShowCallWidget: () {
+        debugPrint('onShowCallWidget');
+        if (isIOS) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => new CallWidget(),
+            ),
+          );
+        } else {
+          StringeeWrapper().requestPermissions().then((value) {
+            if (value) {
+              if (isRejectFromPush) {
+                CallWrapper().endCall(false);
+                isRejectFromPush = false;
+              } else if (isAnswerFromPush) {
+                CallWrapper().answer();
+                isAnswerFromPush = false;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => new CallWidget(),
+                  ),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => new CallWidget(),
+                  ),
+                );
+              }
+            } else {
+              CallWrapper().endCall(false);
+            }
+          });
+        }
+      },
+      onCallWidgetDismiss: () {
+        debugPrint('onCallWidgetDismiss');
+      },
+    ));
+    StringeeWrapper().connect(_token);
   }
 
   @override
@@ -376,41 +363,17 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            MainButton(
-                              text: 'Call',
-                              onPressed: () {
-                                _callTapped(true, false);
-                              },
-                            ),
-                            MainButton(
-                              text: 'Video call',
-                              margin: const EdgeInsets.only(top: 20.0),
-                              onPressed: () {
-                                _callTapped(true, true);
-                              },
-                            ),
-                          ],
+                        CustomButton(
+                          text: 'Voice call',
+                          onPressed: () {
+                            _callTapped(false);
+                          },
                         ),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            MainButton(
-                              text: 'Call 2',
-                              onPressed: () {
-                                _callTapped(false, false);
-                              },
-                            ),
-                            MainButton(
-                              text: 'Video call 2',
-                              margin: const EdgeInsets.only(top: 20.0),
-                              onPressed: () {
-                                _callTapped(false, true);
-                              },
-                            ),
-                          ],
+                        CustomButton(
+                          text: 'Video call',
+                          onPressed: () {
+                            _callTapped(true);
+                          },
                         ),
                       ],
                     ),
@@ -424,20 +387,47 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     );
   }
 
-  void _callTapped(bool isStringeeCall, bool isVideoCall) {
-    if (_to.isEmpty || !ClientManager().stringeeClient!.hasConnected) return;
-    if (_isPermissionGranted || Platform.isIOS) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Call(
-            to: _to,
-            isVideoCall: isVideoCall,
-            isIncomingCall: false,
-            isStringeeCall: isStringeeCall,
-          ),
-        ),
-      );
+  void _callTapped(bool isVideoCall) {
+    if (_to.isEmpty || !StringeeWrapper().hasConnected()) {
+      return;
     }
+    StringeeWrapper().makeCall(
+        _userId,
+        _to,
+        isVideoCall,
+        new CallBackListener(
+          onSuccess: ({result}) {
+            debugPrint('makeCall success');
+          },
+          onError: (String error) {
+            debugPrint('makeCall error: $error');
+          },
+        ));
+  }
+}
+
+class CustomButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final String text;
+  final EdgeInsetsGeometry? margin;
+
+  const CustomButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.margin,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40.0,
+      width: 175.0,
+      margin: margin,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        child: Text(text),
+      ),
+    );
   }
 }
