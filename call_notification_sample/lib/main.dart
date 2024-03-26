@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
@@ -172,8 +173,6 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  static String routeName = 'homePage';
-
   const MyHomePage({super.key});
 
   @override
@@ -186,8 +185,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   String _connectStatus = 'Not connected...';
   String _to = "";
   String _userId = "";
-  String _token =
-      'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZULTE3MTA5ODgyMzI3NjAiLCJpc3MiOiJTS0UxUmRVdFVhWXhOYVFRNFdyMTVxRjF6VUp1UWRBYVZUIiwidXNlcklkIjoidXNlcjQiLCJleHAiOjE3NDI1MjQyMzJ9.YJ3-FrSIEajmt6cVayrUOCJQiN3tNXO7A38LE-0IiPY';
+  String _token = 'PUT_YOUR_TOKEN_HERE';
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -391,12 +389,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     if (_to.isEmpty || !StringeeWrapper().hasConnected()) {
       return;
     }
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
     StringeeWrapper().makeCall(
         _userId,
         _to,
         isVideoCall,
         new CallBackListener(
-          onSuccess: ({result}) {
+          onSuccess: () {
             debugPrint('makeCall success');
           },
           onError: (String error) {

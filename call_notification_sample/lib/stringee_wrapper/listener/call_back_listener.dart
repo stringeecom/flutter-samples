@@ -1,5 +1,5 @@
 class CallBackListener {
-  void Function({dynamic result})? onSuccess;
+  void Function()? onSuccess;
   void Function(String message)? onError;
 
   CallBackListener({

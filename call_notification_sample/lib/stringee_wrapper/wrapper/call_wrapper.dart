@@ -197,8 +197,8 @@ class CallWrapper {
     }
   }
 
-  void initAnswer({StringeeCall? stringeeCall, StringeeCall2? stringeeCall2}) {
-    callListener?.onCallStatus(CallStatus.ended);
+  void initAnswer(CallBackListener callBackListener,
+      {StringeeCall? stringeeCall, StringeeCall2? stringeeCall2}) {
     if (Platform.isIOS) {
       CallkeepManager.shared
           ?.reportIncomingCallIfNeeded(
@@ -211,26 +211,40 @@ class CallWrapper {
       _isVideoCall = stringeeCall.isVideoCall;
       _isSpeakerOn = stringeeCall.isVideoCall;
       _isVideoEnable = stringeeCall.isVideoCall;
-      _stringeeCall!.initAnswer().then(handleInitAnswerResult);
+      _stringeeCall!
+          .initAnswer()
+          .then((value) => handleInitAnswerResult(value, callBackListener));
     } else if (stringeeCall2 != null) {
       _stringeeCall2 = stringeeCall2;
       _userId = stringeeCall2.from!;
       _isVideoCall = stringeeCall2.isVideoCall;
       _isSpeakerOn = stringeeCall2.isVideoCall;
       _isVideoEnable = stringeeCall2.isVideoCall;
-      _stringeeCall2!.initAnswer().then(handleInitAnswerResult);
+      _stringeeCall2!
+          .initAnswer()
+          .then((value) => handleInitAnswerResult(value, callBackListener));
+    } else {
+      callBackListener.onError!('Call is not initialized');
     }
-    _callStatus = CallStatus.incoming;
-    registerCallEvent();
   }
 
-  void handleInitAnswerResult(Map<dynamic, dynamic> result) {
+  void handleInitAnswerResult(
+      Map<dynamic, dynamic> result, CallBackListener callBackListener) {
     debugPrint('initAnswer: $result');
     if (!result['status']) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
+      if (callBackListener.onError != null) {
+        callBackListener.onError!(result['message']);
+      }
       release();
+    } else {
+      if (callBackListener.onSuccess != null) {
+        callBackListener.onSuccess!();
+      }
+      _callStatus = CallStatus.incoming;
+      registerCallEvent();
     }
   }
 

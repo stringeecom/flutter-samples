@@ -80,15 +80,36 @@ class StringeeWrapper {
           return;
         }
         isInCall = true;
-        CallWrapper().initAnswer(stringeeCall: stringeeCall);
-        if (_listener != null) {
-          _listener!.onShowCallWidget();
-        }
+        CallWrapper().initAnswer(
+            new CallBackListener(
+              onSuccess: () {
+                debugPrint('initAnswer onSuccess');
+                if (_listener != null) {
+                  _listener!.onShowCallWidget();
+                }
+              },
+              onError: (message) {
+                debugPrint('initAnswer onError: $message');
+              },
+            ),
+            stringeeCall: stringeeCall);
       },
       onIncomingCall2: (stringeeCall2) {
         debugPrint('onIncomingCall2: callId - ${stringeeCall2.id}');
         isInCall = true;
-        CallWrapper().initAnswer(stringeeCall2: stringeeCall2);
+        CallWrapper().initAnswer(
+            new CallBackListener(
+              onSuccess: () {
+                debugPrint('initAnswer onSuccess');
+                if (_listener != null) {
+                  _listener!.onShowCallWidget();
+                }
+              },
+              onError: (message) {
+                debugPrint('initAnswer onError: $message');
+              },
+            ),
+            stringeeCall2: stringeeCall2);
         if (_listener != null) {
           _listener!.onShowCallWidget();
         }
@@ -207,7 +228,7 @@ class StringeeWrapper {
         to,
         isVideoCall,
         new CallBackListener(
-          onSuccess: ({result}) {
+          onSuccess: () {
             if (callBackListener.onSuccess != null) {
               callBackListener.onSuccess!();
             }

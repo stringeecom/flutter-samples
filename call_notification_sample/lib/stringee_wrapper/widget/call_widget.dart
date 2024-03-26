@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../wrapper/stringee_wrapper.dart';
 
 class CallWidget extends StatefulWidget {
-  static String routeName = 'Call';
-
   CallWidget({
     super.key,
   });
@@ -51,6 +50,9 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    if (!isIOS) {
+      FlutterLocalNotificationsPlugin().cancel(notificationId);
+    }
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
         overlays: [SystemUiOverlay.bottom]);

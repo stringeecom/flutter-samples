@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 class StringeeListener {
@@ -6,7 +5,8 @@ class StringeeListener {
   void Function() onDisconnected;
   void Function() onRequestNewToken;
   void Function(int code, String message) onConnectError;
-  void Function(StringeeSignalingState signalingState) onCallSignalingStateChange;
+  void Function(StringeeSignalingState signalingState)
+      onCallSignalingStateChange;
   void Function(StringeeMediaState mediaState) onCallMediaStateChane;
   void Function() onShowCallWidget;
   void Function() onCallWidgetDismiss;
