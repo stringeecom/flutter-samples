@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'firebase_options.dart';
@@ -27,128 +26,17 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   bool isStringeePush = notiData['stringeePushNotification'] == '1.0';
   if (isStringeePush) {
     if (data['callStatus'] == 'started') {
-      /// Create channel for notification
-      const AndroidNotificationDetails androidPlatformChannelSpecifics =
-          AndroidNotificationDetails(
-        channelId, channelName,
-        channelDescription: channelDescription,
-        importance: Importance.max,
-        priority: Priority.high,
-        category: AndroidNotificationCategory.call,
-        ongoing: true,
-        autoCancel: false,
-        actions: <AndroidNotificationAction>[
-          AndroidNotificationAction(
-            actionAnswer,
-            'Answer',
-            titleColor: Colors.green,
-            showsUserInterface: true,
-            cancelNotification: true,
-          ),
-          AndroidNotificationAction(
-            actionReject,
-            'Reject',
-            titleColor: Colors.redAccent,
-            cancelNotification: true,
-            showsUserInterface: true,
-          ),
-        ],
-
-        /// Set true for show App in lockScreen
-        fullScreenIntent: true,
-      );
-      const NotificationDetails platformChannelSpecifics =
-          NotificationDetails(android: androidPlatformChannelSpecifics);
-
-      /// Show notification
-      await flutterLocalNotificationsPlugin.show(
-        notificationId,
-        'Incoming Call from ${data['from']['alias']}',
-        data['from']['number'],
-        platformChannelSpecifics,
-      );
+      await AndroidPushManager().showIncomingCallNotification(data);
     } else if (data['callStatus'] == 'ended') {
-      flutterLocalNotificationsPlugin.cancel(notificationId);
+      await AndroidPushManager().cancelIncomingCallNotification();
     }
   }
 }
 
-@pragma('vm:entry-point')
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
-
-final StreamController<String?> selectNotificationStream =
-    StreamController<String?>.broadcast();
-
-bool isAnswerFromPush = false;
-bool isRejectFromPush = false;
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!isIOS) {
-    final NotificationAppLaunchDetails? notificationAppLaunchDetails =
-        await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
-
-    if (notificationAppLaunchDetails != null) {
-      if (notificationAppLaunchDetails.notificationResponse != null) {
-        if (notificationAppLaunchDetails.didNotificationLaunchApp) {
-          debugPrint(
-              'notificationAppLaunchDetails - ${notificationAppLaunchDetails.notificationResponse!.notificationResponseType.name}');
-          switch (notificationAppLaunchDetails
-              .notificationResponse!.notificationResponseType) {
-            case NotificationResponseType.selectedNotification:
-              debugPrint(
-                  'selectedNotification - ${notificationAppLaunchDetails.notificationResponse!.id}');
-              break;
-            case NotificationResponseType.selectedNotificationAction:
-              debugPrint(
-                  'selectedNotificationAction - ${notificationAppLaunchDetails.notificationResponse!.actionId}');
-              // Handle click button answer notification when app killed
-              if (notificationAppLaunchDetails.notificationResponse!.actionId ==
-                  actionAnswer) {
-                isAnswerFromPush = true;
-              }
-              if (notificationAppLaunchDetails.notificationResponse!.actionId ==
-                  actionReject) {
-                isRejectFromPush = true;
-              }
-              break;
-          }
-        } else {
-          debugPrint(
-              'selectedNotificationAction - ${notificationAppLaunchDetails.notificationResponse!.actionId}');
-        }
-      }
-    }
-
-    const AndroidInitializationSettings androidSettings =
-        AndroidInitializationSettings('ic_noti');
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: androidSettings);
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse:
-          (NotificationResponse notificationResponse) {
-        debugPrint('onDidReceiveNotificationResponse');
-        switch (notificationResponse.notificationResponseType) {
-          case NotificationResponseType.selectedNotification:
-            // handle click on notification when app in background
-            selectNotificationStream.add(actionClickNotification);
-            break;
-          case NotificationResponseType.selectedNotificationAction:
-            // handle click button answer on notification when app in background
-            debugPrint(
-                'onDidReceiveNotificationResponse - selectedNotificationAction - ${notificationResponse.actionId}');
-            if (notificationResponse.actionId == actionAnswer) {
-              selectNotificationStream.add(actionAnswerFromNotification);
-            }
-            if (notificationResponse.actionId == actionReject) {
-              selectNotificationStream.add(actionRejectFromNotification);
-            }
-            break;
-        }
-      },
-    );
+    AndroidPushManager().handleNotificationAction();
     if (!_initialized) {
       await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform);
@@ -191,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint("didChangeAppLifecycle - $state");
     if (state == AppLifecycleState.resumed) {
-      flutterLocalNotificationsPlugin.cancel(notificationId);
+      AndroidPushManager().cancelIncomingCallNotification();
       isAppInBackground = false;
     } else if (state == AppLifecycleState.inactive) {
       isAppInBackground = true;
@@ -201,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    selectNotificationStream.close();
+    AndroidPushManager().release();
     super.dispose();
   }
 
@@ -211,14 +99,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     if (!isIOS) {
-      selectNotificationStream.stream.listen((String? action) async {
-        debugPrint('selectNotificationStream: action - $action');
-        if (action == actionRejectFromNotification) {
-          CallWrapper().endCall(false);
-        } else if (action == actionAnswerFromNotification) {
-          CallWrapper().answer();
-        }
-      });
+      AndroidPushManager().listenNotificationSelect();
     }
     initAndConnectClient();
   }
@@ -272,41 +153,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       },
       onNeedShowCallWidget: (callWidget) {
         debugPrint('onShowCallWidget');
-        if (isIOS) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => callWidget,
-            ),
-          );
-        } else {
-          StringeeWrapper().requestPermissions().then((value) {
-            if (value) {
-              if (isRejectFromPush) {
-                CallWrapper().endCall(false);
-                isRejectFromPush = false;
-              } else if (isAnswerFromPush) {
-                CallWrapper().answer();
-                isAnswerFromPush = false;
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => callWidget,
-                  ),
-                );
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => callWidget,
-                  ),
-                );
-              }
-            } else {
-              CallWrapper().endCall(false);
-            }
-          });
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => callWidget,
+          ),
+        );
       },
       onNeedDismissCallWidget: (message) {
         debugPrint('onCallWidgetDismiss - $message');

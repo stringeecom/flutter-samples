@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../wrapper/stringee_wrapper.dart';
@@ -51,7 +50,7 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     if (!isIOS) {
-      FlutterLocalNotificationsPlugin().cancel(notificationId);
+      AndroidPushManager().cancelIncomingCallNotification();
     }
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
@@ -139,6 +138,7 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
 
   void dismissCallingView(String message) {
     CallWrapper().release();
+    debugPrint('dismissCallingView: $message');
     if (StringeeWrapper().listener != null) {
       StringeeWrapper().listener!.onNeedDismissCallWidget(message);
     }
@@ -414,7 +414,7 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
                           padding: const EdgeInsets.only(left: 10.0),
                           child: Column(
                             mainAxisSize: MainAxisSize.max,
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               status,

@@ -3,23 +3,25 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:ios_call_notification_sample/stringee_wrapper/widget/call_widget.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../common/common.dart';
 import '../listener/call_back_listener.dart';
 import '../listener/stringee_listener.dart';
+import '../push_manager/android_push_manager.dart';
+import '../push_manager/callkeep_manager.dart';
+import '../widget/call_widget.dart';
 import 'call_wrapper.dart';
-import 'callkeep_manager.dart';
 
 export '../common/common.dart';
 export '../listener/call_back_listener.dart';
 export '../listener/call_listener.dart';
 export '../listener/stringee_listener.dart';
+export '../push_manager/android_push_manager.dart';
+export '../push_manager/callkeep_manager.dart';
 export '../widget/call_widget.dart';
 export 'call_wrapper.dart';
-export 'callkeep_manager.dart';
 
 class StringeeWrapper {
   StringeeWrapper._privateConstructor() {
@@ -43,6 +45,7 @@ class StringeeWrapper {
   StringeeClient? get stringeeClient => _stringeeClient;
 
   StringeeListener? get listener => _listener;
+  CallWidget? callWidget;
 
   void connect(String token) {
     _stringeeClient ??= StringeeClient();
@@ -74,7 +77,7 @@ class StringeeWrapper {
       onReceiveCustomMessage: (from, message) {
         debugPrint('onReceiveCustomMessage: from - $from - message - $message');
       },
-      onIncomingCall: (stringeeCall) {
+      onIncomingCall: (stringeeCall) async {
         debugPrint('onIncomingCall: callId - ${stringeeCall.id}');
         if (isInCall) {
           stringeeCall.reject();
@@ -85,9 +88,7 @@ class StringeeWrapper {
             new CallBackListener(
               onSuccess: () {
                 debugPrint('initAnswer onSuccess');
-                if (_listener != null) {
-                  _listener!.onNeedShowCallWidget(new CallWidget());
-                }
+                handleShowCallWidget();
               },
               onError: (message) {
                 debugPrint('initAnswer onError: $message');
@@ -95,29 +96,72 @@ class StringeeWrapper {
             ),
             stringeeCall: stringeeCall);
       },
-      onIncomingCall2: (stringeeCall2) {
+      onIncomingCall2: (stringeeCall2) async {
         debugPrint('onIncomingCall2: callId - ${stringeeCall2.id}');
+        if (isInCall) {
+          stringeeCall2.reject();
+          return;
+        }
         isInCall = true;
         CallWrapper().initAnswer(
             new CallBackListener(
               onSuccess: () {
                 debugPrint('initAnswer onSuccess');
-                if (_listener != null) {
-                  _listener!.onNeedShowCallWidget(new CallWidget());
-                }
+                handleShowCallWidget();
               },
               onError: (message) {
                 debugPrint('initAnswer onError: $message');
               },
             ),
             stringeeCall2: stringeeCall2);
-        if (_listener != null) {
-          _listener!.onNeedShowCallWidget(new CallWidget());
-        }
       },
     ));
     if (!_stringeeClient!.hasConnected) {
       _stringeeClient!.connect(token);
+    }
+  }
+
+  void handleShowCallWidget() {
+    if (isIOS) {
+      if (_listener != null &&
+          !CallWrapper().isCallNotInitialized() &&
+          callWidget == null) {
+        callWidget = new CallWidget();
+        _listener!.onNeedShowCallWidget(callWidget!);
+      }
+    } else {
+      StringeeWrapper().requestPermissions().then((value) {
+        if (value) {
+          // if (CallWrapper().isCallNotInitialized()) {
+          //   if (_listener != null) {
+          //     _listener!.onNeedDismissCallWidget('Call not initialized');
+          //   }
+          //   return;
+          // }
+          if (AndroidPushManager().isRejectFromPush) {
+            CallWrapper().endCall(false);
+            AndroidPushManager().isRejectFromPush = false;
+          } else if (AndroidPushManager().isAnswerFromPush) {
+            CallWrapper().answer();
+            AndroidPushManager().isAnswerFromPush = false;
+            if (_listener != null &&
+                !CallWrapper().isCallNotInitialized() &&
+                callWidget == null) {
+              callWidget = new CallWidget();
+              _listener!.onNeedShowCallWidget(callWidget!);
+            }
+          } else {
+            if (_listener != null &&
+                !CallWrapper().isCallNotInitialized() &&
+                callWidget == null) {
+              callWidget = new CallWidget();
+              _listener!.onNeedShowCallWidget(callWidget!);
+            }
+          }
+        } else {
+          CallWrapper().endCall(false);
+        }
+      });
     }
   }
 
@@ -234,8 +278,9 @@ class StringeeWrapper {
               callBackListener.onSuccess!();
             }
             debugPrint('makeCall onSuccess');
-            if (_listener != null) {
-              _listener!.onNeedShowCallWidget(new CallWidget());
+            if (_listener != null && callWidget == null) {
+              callWidget = new CallWidget();
+              _listener!.onNeedShowCallWidget(callWidget!);
             }
           },
           onError: (message) {

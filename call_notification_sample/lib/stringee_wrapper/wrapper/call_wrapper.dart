@@ -197,8 +197,8 @@ class CallWrapper {
     }
   }
 
-  void initAnswer(CallBackListener callBackListener,
-      {StringeeCall? stringeeCall, StringeeCall2? stringeeCall2}) {
+  Future<void> initAnswer(CallBackListener callBackListener,
+      {StringeeCall? stringeeCall, StringeeCall2? stringeeCall2}) async {
     if (Platform.isIOS) {
       CallkeepManager.shared
           ?.reportIncomingCallIfNeeded(
@@ -214,6 +214,7 @@ class CallWrapper {
       _stringeeCall!
           .initAnswer()
           .then((value) => handleInitAnswerResult(value, callBackListener));
+      registerCallEvent();
     } else if (stringeeCall2 != null) {
       _stringeeCall2 = stringeeCall2;
       _userId = stringeeCall2.from!;
@@ -223,6 +224,7 @@ class CallWrapper {
       _stringeeCall2!
           .initAnswer()
           .then((value) => handleInitAnswerResult(value, callBackListener));
+      registerCallEvent();
     } else {
       callBackListener.onError!('Call is not initialized');
     }
@@ -244,7 +246,6 @@ class CallWrapper {
         callBackListener.onSuccess!();
       }
       _callStatus = CallStatus.incoming;
-      registerCallEvent();
     }
   }
 
@@ -505,6 +506,7 @@ class CallWrapper {
       _stringeeCall2 = null;
     }
     CallWrapper._instance = null;
+    StringeeWrapper().callWidget = null;
   }
 
   bool isCallNotInitialized() {

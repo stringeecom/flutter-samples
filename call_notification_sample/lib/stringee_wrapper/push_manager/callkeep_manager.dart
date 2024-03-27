@@ -4,7 +4,7 @@ import 'package:callkeep/callkeep.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
-import 'stringee_wrapper.dart';
+import '../wrapper/stringee_wrapper.dart';
 
 class CallkeepManager {
   static CallkeepManager? _instance;
