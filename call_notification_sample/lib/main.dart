@@ -234,10 +234,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           _userId = userId;
         });
         if (isIOS) {
-          StringeeWrapper().registerPush(
-              CallkeepManager.shared?.pushToken ?? '',
-              isVoip: true,
-              isProduction: false);
+          if (!CallkeepManager.shared!.isPushRegistered) {
+            CallkeepManager.shared!.isPushRegistered = true;
+            StringeeWrapper().registerPush(
+                CallkeepManager.shared?.pushToken ?? '',
+                isVoip: true,
+                isProduction: false);
+          }
         } else {
           FirebaseMessaging.instance.getToken().then((token) {
             StringeeWrapper().registerPush(token!);
@@ -267,13 +270,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       onCallMediaStateChane: (StringeeMediaState mediaState) {
         debugPrint('onCallMediaStateChane: $mediaState');
       },
-      onShowCallWidget: () {
+      onNeedShowCallWidget: (callWidget) {
         debugPrint('onShowCallWidget');
         if (isIOS) {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => new CallWidget(),
+              builder: (context) => callWidget,
             ),
           );
         } else {
@@ -288,14 +291,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => new CallWidget(),
+                    builder: (context) => callWidget,
                   ),
                 );
               } else {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => new CallWidget(),
+                    builder: (context) => callWidget,
                   ),
                 );
               }
@@ -305,8 +308,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           });
         }
       },
-      onCallWidgetDismiss: () {
-        debugPrint('onCallWidgetDismiss');
+      onNeedDismissCallWidget: (message) {
+        debugPrint('onCallWidgetDismiss - $message');
+        Navigator.popUntil(context, (route) {
+          return route.isFirst;
+        });
       },
     ));
     StringeeWrapper().connect(_token);

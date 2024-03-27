@@ -43,7 +43,7 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (CallWrapper().isCallNotInitialized()) {
-      dismissCallingView();
+      dismissCallingView('Call not initialized');
     }
   }
 
@@ -69,7 +69,7 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
           startCallTimer();
         }
         if (status == CallStatus.busy || status == CallStatus.ended) {
-          dismissCallingView();
+          dismissCallingView(status == CallStatus.busy ? 'Busy' : 'Ended');
         }
       },
       onReceiveLocalStream: () {
@@ -137,11 +137,11 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
     CallWrapper().endCall(false);
   }
 
-  void dismissCallingView() {
+  void dismissCallingView(String message) {
     CallWrapper().release();
-    Navigator.popUntil(context, (route) {
-      return route.isFirst;
-    });
+    if (StringeeWrapper().listener != null) {
+      StringeeWrapper().listener!.onNeedDismissCallWidget(message);
+    }
   }
 
   void startCallTimer() {

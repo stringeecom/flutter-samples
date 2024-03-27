@@ -11,6 +11,7 @@ class CallkeepManager {
   String? pushToken;
   final FlutterCallkeep callkeep = FlutterCallkeep();
   late bool isActiveAudio = false;
+  bool isPushRegistered = false;
 
   static CallkeepManager? get shared {
     if (_instance == null) {
@@ -102,8 +103,11 @@ class CallkeepManager {
     callkeep.on(CallKeepPushKitToken(), (event) {
       CallkeepManager.shared?.pushToken = event.token;
       debugPrint('event token: ${event.token}');
-      StringeeWrapper()
-          .registerPush(event.token ?? '', isVoip: true, isProduction: false);
+      if (!isPushRegistered) {
+        isPushRegistered = true;
+        StringeeWrapper()
+            .registerPush(event.token ?? '', isVoip: true, isProduction: false);
+      }
     });
 
     callkeep.on(CallKeepDidActivateAudioSession(), (event) {

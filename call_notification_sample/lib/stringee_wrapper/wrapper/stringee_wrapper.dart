@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:ios_call_notification_sample/stringee_wrapper/widget/call_widget.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
@@ -85,7 +86,7 @@ class StringeeWrapper {
               onSuccess: () {
                 debugPrint('initAnswer onSuccess');
                 if (_listener != null) {
-                  _listener!.onShowCallWidget();
+                  _listener!.onNeedShowCallWidget(new CallWidget());
                 }
               },
               onError: (message) {
@@ -102,7 +103,7 @@ class StringeeWrapper {
               onSuccess: () {
                 debugPrint('initAnswer onSuccess');
                 if (_listener != null) {
-                  _listener!.onShowCallWidget();
+                  _listener!.onNeedShowCallWidget(new CallWidget());
                 }
               },
               onError: (message) {
@@ -111,7 +112,7 @@ class StringeeWrapper {
             ),
             stringeeCall2: stringeeCall2);
         if (_listener != null) {
-          _listener!.onShowCallWidget();
+          _listener!.onNeedShowCallWidget(new CallWidget());
         }
       },
     ));
@@ -234,7 +235,7 @@ class StringeeWrapper {
             }
             debugPrint('makeCall onSuccess');
             if (_listener != null) {
-              _listener!.onShowCallWidget();
+              _listener!.onNeedShowCallWidget(new CallWidget());
             }
           },
           onError: (message) {
