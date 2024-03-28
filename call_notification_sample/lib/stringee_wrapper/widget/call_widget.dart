@@ -39,9 +39,9 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
-    if (CallWrapper().isCallNotInitialized()) {
+    if (await CallWrapper().isCallNotInitialized()) {
       dismissCallingView('Call not initialized');
     }
   }
@@ -145,14 +145,16 @@ class _CallWidgetState extends State<CallWidget> with WidgetsBindingObserver {
   }
 
   void startCallTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      int second = timer.tick.toDouble().remainder(60).toInt();
-      int minute = timer.tick.toDouble() ~/ 60;
-      setState(() {
-        _time =
-            '${minute < 10 ? '0$minute' : minute}:${second < 10 ? '0$second' : second}';
+    if (_timer == null) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        int second = timer.tick.toDouble().remainder(60).toInt();
+        int minute = timer.tick.toDouble() ~/ 60;
+        setState(() {
+          _time =
+              '${minute < 10 ? '0$minute' : minute}:${second < 10 ? '0$second' : second}';
+        });
       });
-    });
+    }
   }
 
   @override

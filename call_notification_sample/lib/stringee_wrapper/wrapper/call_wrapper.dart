@@ -1,4 +1,6 @@
 import 'dart:io' show Platform;
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
@@ -6,7 +8,23 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 import 'stringee_wrapper.dart';
 
 class CallWrapper {
-  CallWrapper._privateConstructor();
+  late ReceivePort _receivePort;
+
+  CallWrapper._privateConstructor() {
+    _receivePort = ReceivePort();
+    _receivePort.listen((message) {
+      debugPrint('receivePort: $message');
+      if (message == getCallId() && _callStatus != CallStatus.ended) {
+        _callStatus = CallStatus.ended;
+        release();
+        if (_callListener != null) {
+          _callListener!.onCallStatus(_callStatus);
+        }
+      }
+    });
+    IsolateNameServer.registerPortWithName(
+        _receivePort.sendPort, endCallFromPushServerName);
+  }
 
   static CallWrapper? _instance;
 
@@ -145,7 +163,7 @@ class CallWrapper {
   }
 
   void makeCall(String from, String to, bool isVideoCall,
-      CallBackListener callBackListener) {
+      CallBackListener callBackListener) async {
     isInCall = true;
     if (isVideoCall) {
       _stringeeCall2 = StringeeCall2(StringeeWrapper().stringeeClient!);
@@ -158,7 +176,7 @@ class CallWrapper {
     _isSpeakerOn = isVideoCall;
     _isVideoEnable = isVideoCall;
     registerCallEvent();
-    if (isCallNotInitialized()) {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -260,7 +278,8 @@ class CallWrapper {
         onReceiveRemoteStream: handleOnReceiveRemoteStream,
         onChangeAudioDevice: handleOnChangeAudioDevice,
       ));
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!.registerEvent(StringeeCall2Listener(
         onChangeSignalingState: handleOnChangeSignalingState,
         onChangeMediaState: handleOnChangeMediaState,
@@ -273,8 +292,8 @@ class CallWrapper {
     }
   }
 
-  void answer() {
-    if (isCallNotInitialized()) {
+  void answer() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -289,14 +308,12 @@ class CallWrapper {
           .then((value) => {debugPrint('end call keep')});
     }
 
-    if (_stringeeCall != null) {
-      if (_signalingState == StringeeSignalingState.calling ||
-          _signalingState == StringeeSignalingState.calling) {
+    if (_signalingState == StringeeSignalingState.calling ||
+        _signalingState == StringeeSignalingState.ringing) {
+      if (_stringeeCall != null) {
         _stringeeCall!.answer().then(handleAnswerResult);
       }
-    } else if (_stringeeCall2 != null) {
-      if (_signalingState == StringeeSignalingState.calling ||
-          _signalingState == StringeeSignalingState.calling) {
+      if (_stringeeCall2 != null) {
         _stringeeCall2!.answer().then(handleAnswerResult);
       }
     }
@@ -319,8 +336,15 @@ class CallWrapper {
     }
   }
 
-  void setUpSpeakerBeforeCall() {
-    if (isCallNotInitialized()) {
+  void handleEndCallFromPush() {
+    if (_callListener != null) {
+      _callListener!.onCallStatus(CallStatus.ended);
+    }
+    release();
+  }
+
+  void setUpSpeakerBeforeCall() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -333,7 +357,8 @@ class CallWrapper {
           debugPrint('setSpeakerphoneOn: $result');
         },
       );
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!.setSpeakerphoneOn(_isSpeakerOn).then(
         (result) {
           debugPrint('setSpeakerphoneOn: $result');
@@ -342,8 +367,8 @@ class CallWrapper {
     }
   }
 
-  void endCall(bool isHangUp) {
-    if (isCallNotInitialized()) {
+  void endCall(bool isHangUp) async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -364,7 +389,8 @@ class CallWrapper {
       } else {
         _stringeeCall!.reject().then(handleRejectResult);
       }
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       if (isHangUp) {
         _stringeeCall2!.hangup().then(handleHangUpResult);
       } else {
@@ -385,8 +411,8 @@ class CallWrapper {
     debugPrint('reject: $result');
   }
 
-  void enableVideo() {
-    if (isCallNotInitialized()) {
+  void enableVideo() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -395,7 +421,8 @@ class CallWrapper {
     }
     if (_stringeeCall != null) {
       _stringeeCall!.enableVideo(!_isVideoEnable).then(handleEnableVideoResult);
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!
           .enableVideo(!_isVideoEnable)
           .then(handleEnableVideoResult);
@@ -412,8 +439,8 @@ class CallWrapper {
     }
   }
 
-  void mute() {
-    if (isCallNotInitialized()) {
+  void mute() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -422,7 +449,8 @@ class CallWrapper {
     }
     if (_stringeeCall != null) {
       _stringeeCall!.mute(_isMicOn).then(handleMuteResult);
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!.mute(_isMicOn).then(handleMuteResult);
     }
   }
@@ -437,8 +465,8 @@ class CallWrapper {
     }
   }
 
-  void changeSpeaker() {
-    if (isCallNotInitialized()) {
+  void changeSpeaker() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -449,7 +477,8 @@ class CallWrapper {
       _stringeeCall!
           .setSpeakerphoneOn(!_isSpeakerOn)
           .then(handleChangeSpeakerResult);
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!
           .setSpeakerphoneOn(!_isSpeakerOn)
           .then(handleChangeSpeakerResult);
@@ -466,8 +495,8 @@ class CallWrapper {
     }
   }
 
-  void switchCamera() {
-    if (isCallNotInitialized()) {
+  void switchCamera() async {
+    if (await isCallNotInitialized()) {
       if (_callListener != null) {
         _callListener!.onCallStatus(CallStatus.ended);
       }
@@ -476,7 +505,8 @@ class CallWrapper {
     }
     if (_stringeeCall != null) {
       _stringeeCall!.switchCamera().then(handleSwitchCameraResult);
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       _stringeeCall2!.switchCamera().then(handleSwitchCameraResult);
     }
   }
@@ -499,7 +529,8 @@ class CallWrapper {
         _stringeeCall!.destroy();
       }
       _stringeeCall = null;
-    } else if (_stringeeCall2 != null) {
+    }
+    if (_stringeeCall2 != null) {
       if (_stringeeCall2 != null) {
         _stringeeCall2!.destroy();
       }
@@ -509,7 +540,7 @@ class CallWrapper {
     StringeeWrapper().callWidget = null;
   }
 
-  bool isCallNotInitialized() {
+  Future<bool> isCallNotInitialized() async {
     bool isCallNotInitialized = true;
     if (_stringeeCall != null) {
       isCallNotInitialized = _stringeeCall == null;
@@ -522,13 +553,9 @@ class CallWrapper {
   String getCallId() {
     String callId = '';
     if (_stringeeCall != null) {
-      if (stringeeCall != null) {
-        callId = stringeeCall!.id!;
-      }
+      callId = _stringeeCall!.id!;
     } else if (_stringeeCall2 != null) {
-      if (stringeeCall2 != null) {
-        callId = stringeeCall2!.id!;
-      }
+      callId = _stringeeCall2!.id!;
     }
     return callId;
   }
@@ -536,13 +563,9 @@ class CallWrapper {
   String getFrom() {
     String from = '';
     if (_stringeeCall != null) {
-      if (stringeeCall != null) {
-        from = stringeeCall!.from!;
-      }
+      from = _stringeeCall!.from!;
     } else if (_stringeeCall2 != null) {
-      if (stringeeCall2 != null) {
-        from = stringeeCall2!.from!;
-      }
+      from = _stringeeCall2!.from!;
     }
     return from;
   }

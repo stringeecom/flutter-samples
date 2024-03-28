@@ -25,11 +25,7 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   Map<dynamic, dynamic> data = json.decode(notiData['data']);
   bool isStringeePush = notiData['stringeePushNotification'] == '1.0';
   if (isStringeePush) {
-    if (data['callStatus'] == 'started') {
-      await AndroidPushManager().showIncomingCallNotification(data);
-    } else if (data['callStatus'] == 'ended') {
-      await AndroidPushManager().cancelIncomingCallNotification();
-    }
+    await AndroidPushManager().handleStringeePush(data);
   }
 }
 

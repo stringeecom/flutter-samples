@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../wrapper/call_wrapper.dart';
+import '../wrapper/stringee_wrapper.dart';
 
 class AndroidPushManager {
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -37,6 +39,22 @@ class AndroidPushManager {
 
   bool isAnswerFromPush = false;
   bool isRejectFromPush = false;
+
+  Future<void> handleStringeePush(Map<dynamic, dynamic> data) async {
+    String callStatus = data['callStatus'];
+    String callId = data['callId'];
+    if (callStatus == 'started') {
+      await showIncomingCallNotification(data);
+    } else if (callStatus == 'ended') {
+      await cancelIncomingCallNotification();
+      SendPort? sendPort =
+          IsolateNameServer.lookupPortByName(endCallFromPushServerName);
+      debugPrint('sendPort: $sendPort');
+      if (sendPort != null) {
+        sendPort.send(callId);
+      }
+    }
+  }
 
   Future<void> showIncomingCallNotification(Map<dynamic, dynamic> data) async {
     /// Create channel for notification

@@ -121,23 +121,17 @@ class StringeeWrapper {
     }
   }
 
-  void handleShowCallWidget() {
+  void handleShowCallWidget() async {
     if (isIOS) {
       if (_listener != null &&
-          !CallWrapper().isCallNotInitialized() &&
+          !await CallWrapper().isCallNotInitialized() &&
           callWidget == null) {
         callWidget = new CallWidget();
         _listener!.onNeedShowCallWidget(callWidget!);
       }
     } else {
-      StringeeWrapper().requestPermissions().then((value) {
+      StringeeWrapper().requestPermissions().then((value) async {
         if (value) {
-          // if (CallWrapper().isCallNotInitialized()) {
-          //   if (_listener != null) {
-          //     _listener!.onNeedDismissCallWidget('Call not initialized');
-          //   }
-          //   return;
-          // }
           if (AndroidPushManager().isRejectFromPush) {
             CallWrapper().endCall(false);
             AndroidPushManager().isRejectFromPush = false;
@@ -145,14 +139,14 @@ class StringeeWrapper {
             CallWrapper().answer();
             AndroidPushManager().isAnswerFromPush = false;
             if (_listener != null &&
-                !CallWrapper().isCallNotInitialized() &&
+                !await CallWrapper().isCallNotInitialized() &&
                 callWidget == null) {
               callWidget = new CallWidget();
               _listener!.onNeedShowCallWidget(callWidget!);
             }
           } else {
             if (_listener != null &&
-                !CallWrapper().isCallNotInitialized() &&
+                !await CallWrapper().isCallNotInitialized() &&
                 callWidget == null) {
               callWidget = new CallWidget();
               _listener!.onNeedShowCallWidget(callWidget!);
