@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
 import 'package:call_sample/stringee_wrapper/widgets/stringee_call_widget.dart';
 import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'interfaces/stringee_wrapper_interface.dart';
-import 'listener/stringee_listener.dart';
+import 'stringee_listener.dart';
+
+export 'stringee_listener.dart';
+export 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart'
+    show VideoQuality;
 
 class StringeeWrapper implements StringeeWrapperInterface {
   static final StringeeWrapper _instance = StringeeWrapper._internal();
@@ -26,6 +31,8 @@ class StringeeWrapper implements StringeeWrapperInterface {
   late StringeeClient _stringeeClient;
   StringeeListener? _stringeeListener;
 
+  StringeeListener? get stringeeListener => _stringeeListener;
+
   @override
   Future<void> connect(String token) async {
     _stringeeClient.connect(token);
@@ -44,16 +51,18 @@ class StringeeWrapper implements StringeeWrapperInterface {
   }
 
   @override
-  Future<void> disconnect() {
-    // TODO: implement disconnect
-    throw UnimplementedError();
+  Future<void> disconnect() async {
+    _stringeeClient.disconnect();
   }
 
   @override
-  Future<void> makeCall(
-      {required String from,
-      required String to,
-      bool isVideoCall = false}) async {
+  Future<void> makeCall({
+    required String from,
+    required String to,
+    bool isVideoCall = false,
+    Map<dynamic, dynamic>? customData,
+    VideoQuality? videoQuality,
+  }) async {
     StringeeCall? call;
     StringeeCall2? call2;
     if (isVideoCall) {
@@ -61,12 +70,20 @@ class StringeeWrapper implements StringeeWrapperInterface {
     } else {
       call = StringeeCall(_stringeeClient);
     }
-    StringeeCallManager.instance.handleOutgoingCall(
+    final result = await StringeeCallManager.instance.handleOutgoingCall(
       call: call,
       call2: call2,
       from: from,
       to: to,
     );
+    if (result.isSuccess) {
+      _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
+        create: (_) => result.success,
+        child: const StringeeCallWidget(),
+      ));
+    } else {
+      debugPrint('Error: ${result.failure}');
+    }
   }
 
   @override
@@ -104,10 +121,11 @@ class StringeeWrapper implements StringeeWrapperInterface {
         StringeeCall call = event['body'];
         final result =
             await StringeeCallManager.instance.handleIncomingCall(call: call);
-        if (result.isSucess) {
-          // TODO: - pass result to call widget if needed
-          StringeeCallWidget callWidget = const StringeeCallWidget();
-          _stringeeListener?.onPresentCallWidget.call(callWidget);
+        if (result.isSuccess) {
+          _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
+            create: (_) => result.success,
+            child: const StringeeCallWidget(),
+          ));
         } else {
           debugPrint('Error: ${result.failure}');
           // TODO: - handle error if needed
@@ -117,10 +135,11 @@ class StringeeWrapper implements StringeeWrapperInterface {
         StringeeCall2 call2 = event['body'];
         final result =
             await StringeeCallManager.instance.handleIncomingCall(call2: call2);
-        if (result.isSucess) {
-          // TODO: - pass result to call widget if needed
-          StringeeCallWidget callWidget = const StringeeCallWidget();
-          _stringeeListener?.onPresentCallWidget.call(callWidget);
+        if (result.isSuccess) {
+          _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
+            create: (_) => result.success,
+            child: const StringeeCallWidget(),
+          ));
         } else {
           debugPrint('Error: ${result.failure}');
           // TODO: - handle error if needed

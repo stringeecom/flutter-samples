@@ -24,6 +24,7 @@ dependencies:
     git:
       url: https://github.com/stringeecom/callkeep.git
       ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
+  provider: ^6.1.2
 
 dev_dependencies:
   flutter_test:
@@ -34,3 +35,7 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
+
+  assets:
+    - assets/icons/
+

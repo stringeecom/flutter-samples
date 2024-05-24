@@ -12,6 +12,6 @@ class Result<T> {
     return Result(failure: message);
   }
 
-  bool get isSucess => success != null;
+  bool get isSuccess => success != null;
   bool get isFailure => failure != null;
 }

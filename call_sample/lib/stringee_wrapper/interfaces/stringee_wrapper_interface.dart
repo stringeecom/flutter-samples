@@ -1,4 +1,6 @@
-import '../listener/stringee_listener.dart';
+import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+
+import '../stringee_listener.dart';
 
 abstract class StringeeWrapperInterface {
   // client methods
@@ -27,6 +29,8 @@ abstract class StringeeWrapperInterface {
     required String from,
     required String to,
     bool isVideoCall = false,
+    Map<dynamic, dynamic>? customData,
+    VideoQuality? videoQuality,
   });
 
   // listener methods
