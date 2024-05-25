@@ -30,6 +30,16 @@ class StringeeCallModel extends ChangeNotifier {
   bool _isSpeaker = false;
   bool get isSpeaker => _isSpeaker;
 
+  bool get isInCall {
+    if (mediaState == StringeeMediaState.connected) {
+      debugPrint(
+          'isInCall - mediaState connected - signalingState: $signalingState');
+      return true;
+    } else {
+      return signalingState == StringeeSignalingState.answered;
+    }
+  }
+
   /// check if call is a video call
   bool get isVideoCall {
     return call.isVideoCall;
@@ -55,6 +65,9 @@ class StringeeCallModel extends ChangeNotifier {
     return isIncomingCall ? call.from : call.to;
   }
 
+  // flag to check if call is reported end call
+  bool _reportedEndCall = false;
+
   StringeeCallModel(
     this.call, {
     this.isIncomingCall = true,
@@ -64,6 +77,7 @@ class StringeeCallModel extends ChangeNotifier {
     this.videoQuality,
   }) {
     call.eventStreamController.stream.listen((event) {
+      debugPrint('StringeeCallModel ${call.callId} - event: $event');
       _handleStringeeCallEvent(event as Map<dynamic, dynamic>);
     });
 
@@ -76,6 +90,34 @@ class StringeeCallModel extends ChangeNotifier {
 
   _handleStringeeCallEvent(Map<dynamic, dynamic> event) async {
     switch (event['eventType']) {
+      /// StringeeCallEvents
+      case StringeeCallEvents.didChangeSignalingState:
+        _handleSignalingStateChangeEvent(event['body']);
+        break;
+      case StringeeCallEvents.didChangeMediaState:
+        _handleMediaStateChangeEvent(event['body']);
+        break;
+      case StringeeCallEvents.didReceiveCallInfo:
+        _handleReceiveCallInfoEvent(event['body']);
+        break;
+      case StringeeCallEvents.didHandleOnAnotherDevice:
+        _handleHandleOnAnotherDeviceEvent(event['body']);
+        break;
+      case StringeeCallEvents.didReceiveLocalStream:
+        _handleReceiveLocalStreamEvent(event['body']);
+        break;
+      case StringeeCallEvents.didReceiveRemoteStream:
+        _handleReceiveRemoteStreamEvent(event['body']);
+        break;
+      // This event only for android
+      case StringeeCallEvents.didChangeAudioDevice:
+        if (!isIOS) {
+          _handleChangeAudioDeviceEvent(
+              event['selectedAudioDevice'], event['availableAudioDevices']);
+        }
+        break;
+
+      /// StringeeCall2Events
       case StringeeCall2Events.didChangeSignalingState:
         _handleSignalingStateChangeEvent(event['body']);
         break;
@@ -146,14 +188,20 @@ class StringeeCallModel extends ChangeNotifier {
         _startedTimer = false;
         _time = '00:00';
 
-        StringeeCallManager.instance.endedCall(this);
+        if (!_reportedEndCall) {
+          StringeeCallManager.instance.endedCall(this);
+          _reportedEndCall = true;
+        }
         break;
       case StringeeSignalingState.ended:
         _timer?.cancel();
         _startedTimer = false;
         _time = '00:00';
 
-        StringeeCallManager.instance.endedCall(this);
+        if (!_reportedEndCall) {
+          _reportedEndCall = true;
+          StringeeCallManager.instance.endedCall(this);
+        }
         break;
     }
     notifyListeners();
@@ -161,6 +209,7 @@ class StringeeCallModel extends ChangeNotifier {
 
   /// Invoked when get Media state
   void _handleMediaStateChangeEvent(StringeeMediaState state) {
+    debugPrint('handleMediaStateChangeEvent - $state');
     _mediaState = state;
     notifyListeners();
   }
@@ -260,12 +309,11 @@ class StringeeCallModel extends ChangeNotifier {
       _timer?.cancel();
       _startedTimer = false;
       _time = '00:00';
-      final endStatus = await StringeeCallManager.instance.endedCall(this);
-      if (endStatus.isSuccess) {
-        return Result.success(endStatus.success);
-      } else {
-        return Result.failure('Error while hangupCall');
+      if (!_reportedEndCall) {
+        StringeeCallManager.instance.endedCall(this);
+        _reportedEndCall = true;
       }
+      return Result.success('Call ended successfully');
     } else {
       return Result.failure('Error while hangupCall');
     }
@@ -278,12 +326,11 @@ class StringeeCallModel extends ChangeNotifier {
       _timer?.cancel();
       _startedTimer = false;
       _time = '00:00';
-      final endStatus = await StringeeCallManager.instance.endedCall(this);
-      if (endStatus.isSuccess) {
-        return Result.success(endStatus.success);
-      } else {
-        return Result.failure('Error while rejectCall');
+      if (!_reportedEndCall) {
+        StringeeCallManager.instance.endedCall(this);
+        _reportedEndCall = true;
       }
+      return Result.success('Call rejected successfully');
     } else {
       return Result.failure('Error while rejectCall');
     }

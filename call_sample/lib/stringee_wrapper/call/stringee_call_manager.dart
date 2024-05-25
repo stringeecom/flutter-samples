@@ -33,8 +33,9 @@ class StringeeCallManager implements StringeeCallManagerInterface {
     StringeeCall? call,
     StringeeCall2? call2,
   }) async {
-    assert(call != null || call2 != null, 'Call cannot be null');
-
+    if (call == null && call2 == null) {
+      return Result.failure('Call cannot be null');
+    }
     // create a call model
     StringeeCallModel stringeeCallModel;
     if (call != null) {

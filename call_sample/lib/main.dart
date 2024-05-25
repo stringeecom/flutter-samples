@@ -65,7 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
         debugPrint('Connect error: $code - $msg');
       },
       onPresentCallWidget: (callWidget) {
-        debugPrint('Call widget presented');
+        debugPrint('onPresentCallWidget: ${callWidget.hashCode}');
         showDialog(
           useSafeArea: false,
           context: context,
@@ -74,8 +74,10 @@ class _MyHomePageState extends State<MyHomePage> {
         );
       },
       onDismissCallWidget: (msg) {
-        debugPrint('Call ended: $msg');
-        Navigator.of(context).pop();
+        debugPrint('onDismissCallWidget: $msg');
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
       },
     ));
   }
