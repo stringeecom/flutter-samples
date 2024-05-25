@@ -13,9 +13,7 @@ class StringeeCallManager implements StringeeCallManagerInterface {
   /// private constructor
   ///
   /// initialize the call manager
-  StringeeCallManager._internal() {
-    _callkeepManager = CallkeepManager();
-  }
+  StringeeCallManager._internal();
 
   /// get the singleton instance
   static StringeeCallManager get instance => _instance;
@@ -25,8 +23,16 @@ class StringeeCallManager implements StringeeCallManagerInterface {
   /// list of calls
   final List<StringeeCallModel> _calls = [];
 
-  /// callkeep manager to handle callkit
-  late CallkeepManager _callkeepManager;
+  StringeeCallModel? callWithUuid(String uuid) {
+    try {
+      _calls.map((e) => print(e.uuid));
+      return _calls.firstWhere(
+        (element) => element.uuid == uuid,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
 
   @override
   Future<Result<StringeeCallModel>> handleIncomingCall({
@@ -56,7 +62,8 @@ class StringeeCallManager implements StringeeCallManagerInterface {
     _calls.add(stringeeCallModel);
 
     if (isIOS) {
-      // TODO: - show callkit
+      CallkeepManager()
+          .reportIncomingCallIfNeeded(stringeeCallModel: stringeeCallModel);
     } else {
       // TODO: - handle incoming call for android
     }
@@ -83,65 +90,48 @@ class StringeeCallManager implements StringeeCallManagerInterface {
       return Result.failure('Call cannot be null');
     }
     // create a call model
-    StringeeCallModel stringeeCallModel;
-    if (call != null) {
-      stringeeCallModel = StringeeCallModel(
-        StringeeCallWrapper(call),
-        isIncomingCall: false,
-        from: from,
-        to: to,
-        customData: customData,
-        videoQuality: videoQuality,
-      );
-    } else {
-      stringeeCallModel = StringeeCallModel(
-        StringeeCall2Wrapper(call2!),
-        isIncomingCall: false,
-        from: from,
-        to: to,
-        customData: customData,
-        videoQuality: videoQuality,
-      );
-    }
+    StringeeCallModel stringeeCallModel = StringeeCallModel(
+      call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
+      isIncomingCall: false,
+      from: from,
+      to: to,
+      customData: customData,
+      videoQuality: videoQuality,
+    );
     _calls.add(stringeeCallModel);
     return Result.success(stringeeCallModel);
   }
 
   @override
   Future<Result> answeredCall(StringeeCallModel call) async {
-    // TODO: - handle call answered
     if (isIOS) {
-      // answer callkit
+      CallkeepManager().answerCallIfNeeded(stringeeCallModel: call);
     } else {
-      // android
+      // TODO: - handle call answered android
     }
     return Result.success('Call answered successfully');
   }
 
   @override
-  Future<Result> endedCall(StringeeCallModel call) async {
-    // remove the call from the list
-    _calls.remove(call);
-
-    // TODO: - handle call ended
-    if (isIOS) {
-      // end callkit
-    } else {
-      // android
-    }
-
-    // dismiss the call screen
-    StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
-    return Result.success('Call ended successfully');
-  }
-
-  @override
   Future<Result> madeCall(StringeeCallModel call) async {
     if (isIOS) {
-      // show callkit
+      CallkeepManager().reportOutgoingCallIfNeeded(stringeeCallModel: call);
     } else {
-      // android
+      // TODO: - handle outgoing call for android if needed
     }
     return Result.success('Call made successfully');
+  }
+
+  Future<void> endStringeeCall(StringeeCallModel call) async {
+    if (call.isIncomingCall &&
+        call.mediaState == StringeeMediaState.disconnected) {
+      await call.call.reject();
+    } else {
+      await call.call.hangup();
+    }
+    _calls.remove(call);
+
+    // TODO: - dismiss the call screen or handle next call if needed
+    StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
   }
 }

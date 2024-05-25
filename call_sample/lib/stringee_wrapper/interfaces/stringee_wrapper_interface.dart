@@ -13,7 +13,7 @@ abstract class StringeeWrapperInterface {
   Future<void> disconnect();
 
   /// enable/unregister push to receive call when app is in background
-  Future<void> enablePush();
+  Future<void> enablePush({bool? isProduction, bool? isVoip});
   Future<void> unregisterPush();
 
   // call methods

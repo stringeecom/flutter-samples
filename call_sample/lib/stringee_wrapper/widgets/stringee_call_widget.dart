@@ -20,9 +20,10 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.primaryFocus?.unfocus();
 
-    if (!Provider.of<StringeeCallModel>(context, listen: false)
-        .isIncomingCall) {
-      Provider.of<StringeeCallModel>(context, listen: false).makeCall();
+    // Make call if it is outgoing call
+    final model = context.read<StringeeCallModel>();
+    if (!model.isIncomingCall) {
+      model.makeCall();
     }
   }
 
@@ -30,12 +31,6 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // TODO: - do something if
     super.didChangeAppLifecycleState(state);
-  }
-
-  @override
-  void dispose() {
-    // TODO: implement dispose
-    super.dispose();
   }
 
   @override

@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
+import 'common/common.dart';
 import 'interfaces/stringee_wrapper_interface.dart';
+import 'push_manager/callkeep_manager.dart';
 import 'stringee_listener.dart';
 
 export 'stringee_listener.dart';
@@ -26,6 +28,12 @@ class StringeeWrapper implements StringeeWrapperInterface {
     _stringeeClient.eventStreamController.stream.listen((event) {
       _handleStringeeEvent(event as Map<dynamic, dynamic>);
     });
+
+    /// TODO: - configure callkeep for android
+    /// move this to somewhere else to configure with more options like appName, icon, etc.
+    if (isIOS) {
+      CallkeepManager().configureCallKeep();
+    }
   }
 
   late StringeeClient _stringeeClient;
@@ -33,21 +41,32 @@ class StringeeWrapper implements StringeeWrapperInterface {
 
   StringeeListener? get stringeeListener => _stringeeListener;
 
+  bool _isEnablePush = false;
+  bool get isEnablePush => _isEnablePush;
+
   @override
   Future<void> connect(String token) async {
     _stringeeClient.connect(token);
   }
 
   @override
-  Future<void> enablePush() {
-    // TODO: implement enablePush
-    throw UnimplementedError();
+  Future<void> enablePush({bool? isProduction, bool? isVoip}) async {
+    _isEnablePush = true;
+    if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
+      _stringeeClient.registerPush(
+        CallkeepManager().pushToken,
+        isVoip: isVoip,
+        isProduction: isProduction,
+      );
+    }
   }
 
   @override
-  Future<void> unregisterPush() {
-    // TODO: implement unregisterPush
-    throw UnimplementedError();
+  Future<void> unregisterPush() async {
+    _isEnablePush = false;
+    if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
+      _stringeeClient.unregisterPush(CallkeepManager().pushToken);
+    }
   }
 
   @override

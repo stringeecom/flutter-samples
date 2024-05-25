@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../common/common.dart';
+import '../push_manager/callkeep_manager.dart';
 import 'stringee_call_manager.dart';
 
 class StringeeCallModel extends ChangeNotifier {
@@ -40,6 +41,13 @@ class StringeeCallModel extends ChangeNotifier {
     }
   }
 
+  String _uuid = '';
+  String get uuid => _uuid;
+
+  void setUuid(String uuid) {
+    _uuid = uuid;
+  }
+
   /// check if call is a video call
   bool get isVideoCall {
     return call.isVideoCall;
@@ -67,6 +75,8 @@ class StringeeCallModel extends ChangeNotifier {
 
   // flag to check if call is reported end call
   bool _reportedEndCall = false;
+  // flag to check if call is reported answered call
+  bool _reportedAnsweredCall = false;
 
   StringeeCallModel(
     this.call, {
@@ -80,8 +90,6 @@ class StringeeCallModel extends ChangeNotifier {
       debugPrint('StringeeCallModel ${call.callId} - event: $event');
       _handleStringeeCallEvent(event as Map<dynamic, dynamic>);
     });
-
-    // TODO: - make call when init or somewhere else ??
     // make call if it is an outgoing call
     // if (!isIncomingCall) {
     //   makeCall();
@@ -142,15 +150,12 @@ class StringeeCallModel extends ChangeNotifier {
       case StringeeCall2Events.didRemoveVideoTrack:
         _handleRemoveVideoTrackEvent(event['body']);
         break;
-
-      /// This event only for android
+      // This event only for android
       case StringeeCall2Events.didChangeAudioDevice:
         if (!isIOS) {
           _handleChangeAudioDeviceEvent(
               event['selectedAudioDevice'], event['availableAudioDevices']);
         }
-        break;
-      default:
         break;
     }
   }
@@ -167,8 +172,6 @@ class StringeeCallModel extends ChangeNotifier {
 
   /// Invoked when get Signaling state
   void _handleSignalingStateChangeEvent(StringeeSignalingState state) {
-    debugPrint('handleSignalingStateChangeEvent - $state');
-    // TODO: - handle signaling state
     _signalingState = state;
     switch (state) {
       case StringeeSignalingState.calling:
@@ -181,27 +184,16 @@ class StringeeCallModel extends ChangeNotifier {
           _time = '00:00';
           _startCallTimer();
         }
-        StringeeCallManager.instance.answeredCall(this);
+        if (!_reportedAnsweredCall) {
+          _reportedAnsweredCall = true;
+          StringeeCallManager.instance.answeredCall(this);
+        }
         break;
       case StringeeSignalingState.busy:
-        _timer?.cancel();
-        _startedTimer = false;
-        _time = '00:00';
-
-        if (!_reportedEndCall) {
-          StringeeCallManager.instance.endedCall(this);
-          _reportedEndCall = true;
-        }
+        _endCall();
         break;
       case StringeeSignalingState.ended:
-        _timer?.cancel();
-        _startedTimer = false;
-        _time = '00:00';
-
-        if (!_reportedEndCall) {
-          _reportedEndCall = true;
-          StringeeCallManager.instance.endedCall(this);
-        }
+        _endCall();
         break;
     }
     notifyListeners();
@@ -289,12 +281,15 @@ class StringeeCallModel extends ChangeNotifier {
   /// Call actions
   Future<Result> answerCall() async {
     final result = await call.answer();
-    // TODO: - handle answer call result
     if (result['status']) {
       if (!_startedTimer) {
         _startedTimer = true;
         _time = '00:00';
         _startCallTimer();
+      }
+      if (!_reportedAnsweredCall) {
+        _reportedAnsweredCall = true;
+        StringeeCallManager.instance.answeredCall(this);
       }
       return Result.success(result);
     } else {
@@ -303,37 +298,11 @@ class StringeeCallModel extends ChangeNotifier {
   }
 
   Future<Result> hangupCall() async {
-    final result = await call.hangup();
-    // TODO: - handle hangupCall result
-    if (result['status']) {
-      _timer?.cancel();
-      _startedTimer = false;
-      _time = '00:00';
-      if (!_reportedEndCall) {
-        StringeeCallManager.instance.endedCall(this);
-        _reportedEndCall = true;
-      }
-      return Result.success('Call ended successfully');
-    } else {
-      return Result.failure('Error while hangupCall');
-    }
+    return _endCall();
   }
 
   Future<Result> rejectCall() async {
-    final result = await call.reject();
-    // TODO: - handle rejectCall result
-    if (result['status']) {
-      _timer?.cancel();
-      _startedTimer = false;
-      _time = '00:00';
-      if (!_reportedEndCall) {
-        StringeeCallManager.instance.endedCall(this);
-        _reportedEndCall = true;
-      }
-      return Result.success('Call rejected successfully');
-    } else {
-      return Result.failure('Error while rejectCall');
-    }
+    return _endCall();
   }
 
   Future<Result> muteCall() async {
@@ -376,5 +345,23 @@ class StringeeCallModel extends ChangeNotifier {
     } else {
       return Result.failure('Error while changeSpeaker');
     }
+  }
+
+  Future<Result> _endCall() async {
+    _timer?.cancel();
+    _startedTimer = false;
+    _time = '00:00';
+    if (!_reportedEndCall) {
+      _reportedEndCall = true;
+
+      // end callkit first
+      if (isIOS) {
+        return CallkeepManager().endCallIfNeeded(stringeeCallModel: this);
+      } else {
+        // TODO: - handle call ended for android
+        return Result.success('Call ended successfully');
+      }
+    }
+    return Result.success('Call ended successfully');
   }
 }
