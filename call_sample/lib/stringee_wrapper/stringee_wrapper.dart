@@ -37,6 +37,7 @@ class StringeeWrapper implements StringeeWrapperInterface {
   }
 
   late StringeeClient _stringeeClient;
+  StringeeClient get stringeeClient => _stringeeClient;
   StringeeListener? _stringeeListener;
 
   StringeeListener? get stringeeListener => _stringeeListener;
@@ -59,6 +60,7 @@ class StringeeWrapper implements StringeeWrapperInterface {
         isProduction: isProduction,
       );
     }
+    // TODO: - handle push for android
   }
 
   @override
@@ -67,6 +69,7 @@ class StringeeWrapper implements StringeeWrapperInterface {
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
       _stringeeClient.unregisterPush(CallkeepManager().pushToken);
     }
+    // TODO: - handle push for android
   }
 
   @override
@@ -138,34 +141,28 @@ class StringeeWrapper implements StringeeWrapperInterface {
         break;
       case StringeeClientEvents.incomingCall:
         StringeeCall call = event['body'];
-        final result =
-            await StringeeCallManager.instance.handleIncomingCall(call: call);
-        if (result.isSuccess) {
-          _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
-            create: (_) => result.success,
-            child: const StringeeCallWidget(),
-          ));
-        } else {
-          debugPrint('Error: ${result.failure}');
-          // TODO: - handle error if needed
-        }
+        _incomingCall(call, null);
         break;
       case StringeeClientEvents.incomingCall2:
         StringeeCall2 call2 = event['body'];
-        final result =
-            await StringeeCallManager.instance.handleIncomingCall(call2: call2);
-        if (result.isSuccess) {
-          _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
-            create: (_) => result.success,
-            child: const StringeeCallWidget(),
-          ));
-        } else {
-          debugPrint('Error: ${result.failure}');
-          // TODO: - handle error if needed
-        }
+        _incomingCall(null, call2);
         break;
       default:
         break;
+    }
+  }
+
+  _incomingCall(StringeeCall? call, StringeeCall2? call2) async {
+    final result = await StringeeCallManager.instance
+        .handleIncomingCall(call: call, call2: call2);
+    if (result.isSuccess) {
+      _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
+        create: (_) => result.success,
+        child: const StringeeCallWidget(),
+      ));
+    } else {
+      debugPrint('Error: ${result.failure}');
+      // TODO: - handle error if needed
     }
   }
 }

@@ -15,6 +15,6 @@ abstract class CallkeepManagerInterface {
   Future<Result> answerCallIfNeeded(
       {required StringeeCallModel stringeeCallModel});
 
-  Future<Result> endCallIfNeeded(
-      {required StringeeCallModel stringeeCallModel});
+  Future<Result> reportEndCallIfNeeded(
+      {required StringeeCallModel stringeeCallModel, int? reason});
 }

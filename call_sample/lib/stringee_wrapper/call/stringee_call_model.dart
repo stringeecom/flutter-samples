@@ -166,6 +166,7 @@ class StringeeCallModel extends ChangeNotifier {
       int minute = timer.tick.toDouble() ~/ 60;
       _time =
           '${minute < 10 ? '0$minute' : minute}:${second < 10 ? '0$second' : second}';
+      debugPrint(_time);
       notifyListeners();
     });
   }
@@ -179,21 +180,13 @@ class StringeeCallModel extends ChangeNotifier {
       case StringeeSignalingState.ringing:
         break;
       case StringeeSignalingState.answered:
-        if (!_startedTimer) {
-          _startedTimer = true;
-          _time = '00:00';
-          _startCallTimer();
-        }
-        if (!_reportedAnsweredCall) {
-          _reportedAnsweredCall = true;
-          StringeeCallManager.instance.answeredCall(this);
-        }
+        _answerCall();
         break;
       case StringeeSignalingState.busy:
-        _endCall();
+        _endCall(reason: 3);
         break;
       case StringeeSignalingState.ended:
-        _endCall();
+        _endCall(reason: 2);
         break;
     }
     notifyListeners();
@@ -271,7 +264,11 @@ class StringeeCallModel extends ChangeNotifier {
 
     final result = await call.makeCallFromParams(params);
     if (result['status']) {
-      StringeeCallManager.instance.madeCall(this);
+      if (isIOS) {
+        CallkeepManager().reportOutgoingCallIfNeeded(stringeeCallModel: this);
+      } else {
+        // TODO: - handle outgoing call for android if needed
+      }
       return Result.success(result);
     } else {
       return Result.failure('Error while making call');
@@ -280,21 +277,7 @@ class StringeeCallModel extends ChangeNotifier {
 
   /// Call actions
   Future<Result> answerCall() async {
-    final result = await call.answer();
-    if (result['status']) {
-      if (!_startedTimer) {
-        _startedTimer = true;
-        _time = '00:00';
-        _startCallTimer();
-      }
-      if (!_reportedAnsweredCall) {
-        _reportedAnsweredCall = true;
-        StringeeCallManager.instance.answeredCall(this);
-      }
-      return Result.success(result);
-    } else {
-      return Result.failure('Error while answerCall');
-    }
+    return _answerCall();
   }
 
   Future<Result> hangupCall() async {
@@ -307,6 +290,7 @@ class StringeeCallModel extends ChangeNotifier {
 
   Future<Result> muteCall() async {
     final result = await call.mute(!_isMicOn);
+    // TODO: - handle mute call in callkit or not ??
     if (result['status']) {
       _isMicOn = !_isMicOn;
       notifyListeners();
@@ -347,21 +331,50 @@ class StringeeCallModel extends ChangeNotifier {
     }
   }
 
-  Future<Result> _endCall() async {
+  Future<Result> _endCall({int? reason}) async {
     _timer?.cancel();
     _startedTimer = false;
     _time = '00:00';
+    debugPrint('$uuid _endCall $uuid $_reportedEndCall reason: $reason');
     if (!_reportedEndCall) {
       _reportedEndCall = true;
 
-      // end callkit first
       if (isIOS) {
-        return CallkeepManager().endCallIfNeeded(stringeeCallModel: this);
+        /// report end call if needed
+        return CallkeepManager()
+            .reportEndCallIfNeeded(stringeeCallModel: this, reason: reason);
       } else {
         // TODO: - handle call ended for android
+        await StringeeCallManager.instance.endStringeeCall(this);
         return Result.success('Call ended successfully');
       }
     }
+    notifyListeners();
     return Result.success('Call ended successfully');
+  }
+
+  Future<Result> _answerCall() async {
+    startTimerIfNeeded();
+    if (!_reportedAnsweredCall) {
+      _reportedAnsweredCall = true;
+
+      if (isIOS) {
+        return CallkeepManager().answerCallIfNeeded(stringeeCallModel: this);
+      } else {
+        // TODO: - handle call answered for android
+        await StringeeCallManager.instance.answerStringeeCall(this);
+        return Result.success('Call answered successfully');
+      }
+    }
+    return Result.success('Call answered already');
+  }
+
+  startTimerIfNeeded() {
+    if (!_startedTimer) {
+      _startedTimer = true;
+      _time = '00:00';
+      _startCallTimer();
+    }
+    notifyListeners();
   }
 }

@@ -25,7 +25,6 @@ class StringeeCallManager implements StringeeCallManagerInterface {
 
   StringeeCallModel? callWithUuid(String uuid) {
     try {
-      _calls.map((e) => print(e.uuid));
       return _calls.firstWhere(
         (element) => element.uuid == uuid,
       );
@@ -58,19 +57,17 @@ class StringeeCallManager implements StringeeCallManagerInterface {
 
     // TODO: - handle current call if needed
 
-    // add the call to the list
-    _calls.add(stringeeCallModel);
-
-    if (isIOS) {
-      CallkeepManager()
-          .reportIncomingCallIfNeeded(stringeeCallModel: stringeeCallModel);
-    } else {
-      // TODO: - handle incoming call for android
-    }
-
     final initializedCallResult = await stringeeCallModel.call.initAnswer();
 
     if (initializedCallResult['status']) {
+      // add the call to the list
+      _calls.add(stringeeCallModel);
+      if (isIOS) {
+        CallkeepManager()
+            .reportIncomingCallIfNeeded(stringeeCallModel: stringeeCallModel);
+      } else {
+        // TODO: - handle incoming call for android
+      }
       return Result.success(stringeeCallModel);
     } else {
       return Result.failure('Error while handle Incoming call');
@@ -99,27 +96,14 @@ class StringeeCallManager implements StringeeCallManagerInterface {
       videoQuality: videoQuality,
     );
     _calls.add(stringeeCallModel);
+    await stringeeCallModel.makeCall();
     return Result.success(stringeeCallModel);
   }
 
-  @override
-  Future<Result> answeredCall(StringeeCallModel call) async {
-    if (isIOS) {
-      CallkeepManager().answerCallIfNeeded(stringeeCallModel: call);
-    } else {
-      // TODO: - handle call answered android
+  Future<void> answerStringeeCall(StringeeCallModel call) async {
+    if (call.isIncomingCall) {
+      await call.call.answer();
     }
-    return Result.success('Call answered successfully');
-  }
-
-  @override
-  Future<Result> madeCall(StringeeCallModel call) async {
-    if (isIOS) {
-      CallkeepManager().reportOutgoingCallIfNeeded(stringeeCallModel: call);
-    } else {
-      // TODO: - handle outgoing call for android if needed
-    }
-    return Result.success('Call made successfully');
   }
 
   Future<void> endStringeeCall(StringeeCallModel call) async {

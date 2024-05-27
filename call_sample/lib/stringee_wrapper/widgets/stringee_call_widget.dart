@@ -19,12 +19,6 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
 
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.primaryFocus?.unfocus();
-
-    // Make call if it is outgoing call
-    final model = context.read<StringeeCallModel>();
-    if (!model.isIncomingCall) {
-      model.makeCall();
-    }
   }
 
   @override

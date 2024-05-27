@@ -37,6 +37,8 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   bool isVideoCall = false;
   bool connected = false;
+  bool connecting = false;
+  bool isEnablePush = false;
 
   String to = '';
   @override
@@ -49,12 +51,14 @@ class _MyHomePageState extends State<MyHomePage> {
         debugPrint('Connected');
         setState(() {
           connected = true;
+          connecting = false;
         });
       },
       onDisConnected: () {
         debugPrint('Disconnected');
         setState(() {
           connected = false;
+          connecting = false;
         });
       },
       onRequestNewToken: () {
@@ -80,6 +84,10 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       },
     ));
+
+    setState(() {
+      isEnablePush = StringeeWrapper().isEnablePush;
+    });
   }
 
   @override
@@ -94,47 +102,95 @@ class _MyHomePageState extends State<MyHomePage> {
           TextButton.icon(
             onPressed: () {
               // connect to stringee with token using StringeeWrapper
+              if (connecting) {
+                return;
+              }
               connected
                   ? StringeeWrapper().disconnect()
                   : StringeeWrapper().connect(accessToken);
+              setState(() {
+                connecting = true;
+              });
             },
             icon: const Icon(Icons.connect_without_contact_outlined),
-            label: connected ? const Text('Disconnect') : const Text('Connect'),
+            label: connecting
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(),
+                  )
+                : connected
+                    ? const Text('Disconnect')
+                    : const Text('Connect'),
           )
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Enter a callee id',
-                ),
-                onChanged: (value) {
-                  to = value;
+      body: Stack(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Switch.adaptive(
+                value: isEnablePush,
+                onChanged: (value) async {
+                  if (!connected) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please connect to Stringee first'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  if (value) {
+                    StringeeWrapper().enablePush(isVoip: true);
+                  } else {
+                    StringeeWrapper().unregisterPush();
+                  }
+                  setState(() {
+                    isEnablePush = value;
+                  });
                 },
               ),
-            ),
-            Row(
+              const Text("Enable Push"),
+              const SizedBox(width: 16),
+            ],
+          ),
+          Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Switch.adaptive(
-                  value: isVideoCall,
-                  onChanged: (value) {
-                    setState(() {
-                      isVideoCall = value;
-                    });
-                  },
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Enter a callee id',
+                    ),
+                    onChanged: (value) {
+                      to = value;
+                    },
+                  ),
                 ),
-                const Text("Video Call")
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Switch.adaptive(
+                      value: isVideoCall,
+                      onChanged: (value) {
+                        setState(() {
+                          isVideoCall = value;
+                        });
+                      },
+                    ),
+                    const Text("Video Call")
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
+          )
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

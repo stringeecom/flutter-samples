@@ -118,12 +118,7 @@ class StringeeIncallWidget extends StatelessWidget {
           ),
         ),
         bottom: Center(
-          child: CallActionWidget(
-            iconPath: 'assets/icons/ic-end-call-new.png',
-            onPressed: () {
-              model.hangupCall();
-            },
-          ),
+          child: _btnEnd(model),
         ));
   }
 
