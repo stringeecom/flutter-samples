@@ -23,7 +23,7 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // TODO: - do something if
+    // TODO: - do something with call on app lifecycle state
     super.didChangeAppLifecycleState(state);
   }
 

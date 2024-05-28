@@ -44,6 +44,7 @@ class StringeeWrapper implements StringeeWrapperInterface {
 
   bool _isEnablePush = false;
   bool get isEnablePush => _isEnablePush;
+  bool get connected => _stringeeClient.hasConnected;
 
   @override
   Future<void> connect(String token) async {

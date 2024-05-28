@@ -5,7 +5,10 @@ import 'stringee_wrapper/stringee_wrapper.dart';
 const accessToken =
     'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTSy4wLkFCMmFIeUpVNkVwakEyMHN6MWw2NG1WRklhVzRaQ1YyLTE3MTU5MzA3MDMiLCJpc3MiOiJTSy4wLkFCMmFIeUpVNkVwakEyMHN6MWw2NG1WRklhVzRaQ1YyIiwiZXhwIjoxNzE4NTIyNzAzLCJ1c2VySWQiOiJ0YWlwdiJ9.WLhteT-xDFBN2icAnSVRE4wwiNabuSbIdZKJFCS7lJo';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // connect when app start
+  StringeeWrapper().connect(accessToken);
   runApp(const MyApp());
 }
 
@@ -85,8 +88,13 @@ class _MyHomePageState extends State<MyHomePage> {
       },
     ));
 
+    _updateStateWithStringeeWrapper();
+  }
+
+  void _updateStateWithStringeeWrapper() async {
     setState(() {
       isEnablePush = StringeeWrapper().isEnablePush;
+      connected = StringeeWrapper().connected;
     });
   }
 
