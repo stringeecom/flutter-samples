@@ -96,22 +96,8 @@ class StringeeIncallWidget extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  CallActionWidget(
-                    iconPath: Provider.of<StringeeCallModel>(context).isSpeaker
-                        ? 'assets/icons/ic-speaker-selected-new.png'
-                        : 'assets/icons/ic-speaker-new.png',
-                    onPressed: () {
-                      model.changeSpeaker();
-                    },
-                  ),
-                  CallActionWidget(
-                    iconPath: Provider.of<StringeeCallModel>(context).isMicOn
-                        ? 'assets/icons/ic-mute-new.png'
-                        : 'assets/icons/ic-mute-selected-new.png',
-                    onPressed: () {
-                      model.muteCall();
-                    },
-                  ),
+                  _btnSpeaker(model),
+                  _btnMic(model),
                 ],
               ),
             ],
@@ -184,7 +170,7 @@ class StringeeIncallWidget extends StatelessWidget {
 
   Widget _btnMic(StringeeCallModel model) {
     return CallActionWidget(
-      iconPath: model.isMicOn
+      iconPath: !model.isMute
           ? 'assets/icons/ic-mute-new.png'
           : 'assets/icons/ic-mute-selected-new.png',
       onPressed: () {
@@ -204,16 +190,16 @@ class StringeeIncallWidget extends StatelessWidget {
     );
   }
 
-  // Widget _btnSpeaker(StringeeCallModel model) {
-  //   return CallActionWidget(
-  //     iconPath: model.isSpeaker
-  //         ? 'assets/icons/ic-speaker-selected-new.png'
-  //         : 'assets/icons/ic-speaker-new.png',
-  //     onPressed: () {
-  //       model.changeSpeaker();
-  //     },
-  //   );
-  // }
+  Widget _btnSpeaker(StringeeCallModel model) {
+    return CallActionWidget(
+      iconPath: model.isSpeaker
+          ? 'assets/icons/ic-speaker-selected-new.png'
+          : 'assets/icons/ic-speaker-new.png',
+      onPressed: () {
+        model.changeSpeaker();
+      },
+    );
+  }
 
   Widget _btnEnd(StringeeCallModel model) {
     return CallActionWidget(

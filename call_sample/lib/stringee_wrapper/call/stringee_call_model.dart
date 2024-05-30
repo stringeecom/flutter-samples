@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:call_sample/stringee_wrapper/interfaces/interfaces.dart';
+import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../common/common.dart';
+import '../interfaces/stringee_call_interface.dart';
 import '../push_manager/callkeep_manager.dart';
 import 'stringee_call_manager.dart';
 
@@ -24,17 +25,16 @@ class StringeeCallModel extends ChangeNotifier {
   StringeeMediaState get mediaState => _mediaState;
   // String _status = '';
   // String get status => _status;
-  bool _isMicOn = true;
-  bool get isMicOn => _isMicOn;
+  bool _isMute = false;
+  bool get isMute => _isMute;
   bool _isVideoEnable = true;
   bool get isVideoEnable => _isVideoEnable;
   bool _isSpeaker = false;
   bool get isSpeaker => _isSpeaker;
 
+  // TODO: - check if call is connected. need to check more
   bool get isInCall {
     if (mediaState == StringeeMediaState.connected) {
-      debugPrint(
-          'isInCall - mediaState connected - signalingState: $signalingState');
       return true;
     } else {
       return signalingState == StringeeSignalingState.answered;
@@ -73,10 +73,20 @@ class StringeeCallModel extends ChangeNotifier {
     return isIncomingCall ? call.from : call.to;
   }
 
+  /// flags
   // flag to check if call is reported end call
   bool _reportedEndCall = false;
   // flag to check if call is reported answered call
   bool _reportedAnsweredCall = false;
+
+  // flag to check if user answered call
+  bool _isClickedAnswer = false;
+  setIsClickedAnswer(bool value) {
+    _isClickedAnswer = value;
+  }
+
+  /// check to end call by reject or hangup
+  bool get isShouldReject => isIncomingCall && !_isClickedAnswer;
 
   StringeeCallModel(
     this.call, {
@@ -87,7 +97,7 @@ class StringeeCallModel extends ChangeNotifier {
     this.videoQuality,
   }) {
     call.eventStreamController.stream.listen((event) {
-      debugPrint('StringeeCallModel ${call.callId} - event: $event');
+      debugPrint('$uuid StringeeCallModel ${call.callId} - event: $event');
       _handleStringeeCallEvent(event as Map<dynamic, dynamic>);
     });
     // make call if it is an outgoing call
@@ -166,7 +176,6 @@ class StringeeCallModel extends ChangeNotifier {
       int minute = timer.tick.toDouble() ~/ 60;
       _time =
           '${minute < 10 ? '0$minute' : minute}:${second < 10 ? '0$second' : second}';
-      debugPrint(_time);
       notifyListeners();
     });
   }
@@ -192,28 +201,33 @@ class StringeeCallModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Invoked when get Media state
   void _handleMediaStateChangeEvent(StringeeMediaState state) {
-    debugPrint('handleMediaStateChangeEvent - $state');
     _mediaState = state;
     notifyListeners();
   }
 
-  /// Invoked when get Call info
   void _handleReceiveCallInfoEvent(Map<dynamic, dynamic> info) {
-    debugPrint('handleReceiveCallInfoEvent - $info');
-    // TODO: - handle call info
+    // push event to listener
+    StringeeWrapper().stringeeListener?.onReceiveCallInfo?.call(info);
   }
 
-  /// Invoked when an incoming call is handle on another device
   void _handleHandleOnAnotherDeviceEvent(StringeeSignalingState state) {
-    debugPrint('handleHandleOnAnotherDeviceEvent - $state');
-    // TODO: - handle handleOnAnotherDevice
+    /// if call state is busy, ended, answered, need to handle on platform
+    /// end stringee call is not needed, sdk ended call already
+    /// iOS: end callkit
+    /// Android: dismiss notification or something else
+    bool neededHandleOnPlatform = !state.isCalling && !state.isRinging;
+    if (neededHandleOnPlatform) {
+      if (isIOS) {
+        CallkeepManager().reportEndCallIfNeeded(stringeeCallModel: this);
+      } else {
+        // TODO: - handle handleOnAnotherDevice on android if needed
+      }
+    }
   }
 
   /// Invoked when get Local stream in video call
   void _handleReceiveLocalStreamEvent(String callId) {
-    debugPrint('handleReceiveLocalStreamEvent - $callId ${call.callId}');
     if (call.callId == callId) {
       _receivedLocalStream = true;
       notifyListeners();
@@ -222,7 +236,6 @@ class StringeeCallModel extends ChangeNotifier {
 
   /// Invoked when get Remote stream in video call
   void _handleReceiveRemoteStreamEvent(String callId) {
-    debugPrint('handleReceiveRemoteStreamEvent - $callId ${call.callId}');
     if (call.callId == callId) {
       _receivedRemoteStream = true;
       notifyListeners();
@@ -230,18 +243,15 @@ class StringeeCallModel extends ChangeNotifier {
   }
 
   /// Invoked when add new video track to call in video call
-  void _handleAddVideoTrackEvent(StringeeVideoTrack track) {
-    debugPrint('handleAddVideoTrackEvent - ${track.id}');
-  }
+  void _handleAddVideoTrackEvent(StringeeVideoTrack track) {}
 
   /// Invoked when remove video in call in video call
-  void _handleRemoveVideoTrackEvent(StringeeVideoTrack track) {
-    debugPrint('handleRemoveVideoTrackEvent - ${track.id}');
-  }
+  void _handleRemoveVideoTrackEvent(StringeeVideoTrack track) {}
 
   /// Invoked when change Audio device in android
   void _handleChangeAudioDeviceEvent(
       AudioDevice audioDevice, List<AudioDevice> availableAudioDevices) {
+    // TODO: - handle change audio device
     debugPrint('handleChangeAudioDeviceEvent - $audioDevice');
   }
 
@@ -265,7 +275,7 @@ class StringeeCallModel extends ChangeNotifier {
     final result = await call.makeCallFromParams(params);
     if (result['status']) {
       if (isIOS) {
-        CallkeepManager().reportOutgoingCallIfNeeded(stringeeCallModel: this);
+        CallkeepManager().reportOutgoingCallIfNeeded(this);
       } else {
         // TODO: - handle outgoing call for android if needed
       }
@@ -289,14 +299,11 @@ class StringeeCallModel extends ChangeNotifier {
   }
 
   Future<Result> muteCall() async {
-    final result = await call.mute(!_isMicOn);
-    // TODO: - handle mute call in callkit or not ??
-    if (result['status']) {
-      _isMicOn = !_isMicOn;
-      notifyListeners();
-      return Result.success(result);
+    if (isIOS) {
+      return CallkeepManager()
+          .reportMuteCallIfNeeded(stringeeCallModel: this, muted: !_isMute);
     } else {
-      return Result.failure('Error while enableVideo');
+      return mute(!_isMute);
     }
   }
 
@@ -359,7 +366,7 @@ class StringeeCallModel extends ChangeNotifier {
       _reportedAnsweredCall = true;
 
       if (isIOS) {
-        return CallkeepManager().answerCallIfNeeded(stringeeCallModel: this);
+        return CallkeepManager().answerCallIfNeeded(this);
       } else {
         // TODO: - handle call answered for android
         await StringeeCallManager.instance.answerStringeeCall(this);
@@ -376,5 +383,16 @@ class StringeeCallModel extends ChangeNotifier {
       _startCallTimer();
     }
     notifyListeners();
+  }
+
+  Future<Result> mute(bool muted) async {
+    final result = await call.mute(muted);
+    if (result['status']) {
+      _isMute = muted;
+      notifyListeners();
+      return Result.success(result);
+    } else {
+      return Result.failure('Error while mute');
+    }
   }
 }

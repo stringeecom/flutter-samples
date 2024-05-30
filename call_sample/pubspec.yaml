@@ -23,7 +23,7 @@ dependencies:
   callkeep:
     git:
       url: https://github.com/stringeecom/callkeep.git
-      ref: hieph/fixbug/SG-7482-sync-call-with-callId-serial
+      ref: master
   provider: ^6.1.2
 
 dev_dependencies:

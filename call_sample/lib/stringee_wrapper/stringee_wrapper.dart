@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'common/common.dart';
-import 'interfaces/stringee_wrapper_interface.dart';
 import 'push_manager/callkeep_manager.dart';
 import 'stringee_listener.dart';
 
@@ -15,7 +14,7 @@ export 'stringee_listener.dart';
 export 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart'
     show VideoQuality;
 
-class StringeeWrapper implements StringeeWrapperInterface {
+class StringeeWrapper {
   static final StringeeWrapper _instance = StringeeWrapper._internal();
 
   factory StringeeWrapper() {
@@ -46,25 +45,28 @@ class StringeeWrapper implements StringeeWrapperInterface {
   bool get isEnablePush => _isEnablePush;
   bool get connected => _stringeeClient.hasConnected;
 
-  @override
+  /// connect to Stringee server
+  /// [token] is the token of the user
   Future<void> connect(String token) async {
     _stringeeClient.connect(token);
   }
 
-  @override
+  /// enable push to receive call when app is in background
   Future<void> enablePush({bool? isProduction, bool? isVoip}) async {
     _isEnablePush = true;
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
       _stringeeClient.registerPush(
         CallkeepManager().pushToken,
         isVoip: isVoip,
-        isProduction: isProduction,
+        // if isProduction is null, use kReleaseMode
+        isProduction: isProduction ?? kReleaseMode,
       );
+      return;
     }
     // TODO: - handle push for android
   }
 
-  @override
+  /// unregister push to receive call when app is in background
   Future<void> unregisterPush() async {
     _isEnablePush = false;
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
@@ -73,12 +75,18 @@ class StringeeWrapper implements StringeeWrapperInterface {
     // TODO: - handle push for android
   }
 
-  @override
+  /// disconnect from Stringee server
   Future<void> disconnect() async {
     _stringeeClient.disconnect();
   }
 
-  @override
+  /// make a call
+  /// [from] is the caller id
+  /// [to] is the callee id
+  /// [isVideoCall] is the type of the call
+  /// if [isVideoCall] is true, the call is a video call
+  /// if [isVideoCall] is false, the call is an audio call
+  /// [isVideoCall] default is false
   Future<void> makeCall({
     required String from,
     required String to,
@@ -109,7 +117,8 @@ class StringeeWrapper implements StringeeWrapperInterface {
     }
   }
 
-  @override
+  /// add listener to listen event from StringeeWrapper
+  /// [listener] is the listener to listen event
   Future<void> addListener(StringeeListener listener) async {
     _stringeeListener = listener;
   }
@@ -117,28 +126,21 @@ class StringeeWrapper implements StringeeWrapperInterface {
   _handleStringeeEvent(Map<dynamic, dynamic> event) async {
     switch (event['eventType']) {
       case StringeeClientEvents.didConnect:
-        debugPrint('StringeeClientEvents.didConnect ${event['body']}');
         _stringeeListener?.onConnected.call();
         break;
       case StringeeClientEvents.didDisconnect:
-        debugPrint('StringeeClientEvents.didDisconnect ${event['body']}');
         _stringeeListener?.onDisConnected.call();
         break;
       case StringeeClientEvents.didFailWithError:
         int code = event['body']['code'];
         String msg = event['body']['message'];
-        debugPrint('StringeeClientEvents.didFailWithError $code $msg');
         _stringeeListener?.onConnectError.call(code, msg);
         break;
       case StringeeClientEvents.requestAccessToken:
-        debugPrint('StringeeClientEvents.requestAccessToken ${event['body']}');
         _stringeeListener?.onRequestNewToken.call();
         break;
       case StringeeClientEvents.didReceiveCustomMessage:
-        debugPrint(
-            'StringeeClientEvents.didReceiveCustomMessage ${event['body']}');
-        // TODO: handle custom message later
-        // _stringeeListener?.onReceiveCustomMessage.call();
+        _stringeeListener?.onReceiveCustomMessage?.call(event['body']);
         break;
       case StringeeClientEvents.incomingCall:
         StringeeCall call = event['body'];

@@ -5,9 +5,23 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../call/stringee_call_model.dart';
-import '../interfaces/interfaces.dart';
 
-class CallkeepManager implements CallkeepManagerInterface {
+class CallKitModel {
+  // call uuid handled by callkit
+  String? uuid;
+  // call id of the stringee call
+  String? callId;
+  // serial of the stringee call
+  int? serial;
+
+  CallKitModel({
+    this.uuid,
+    this.callId,
+    this.serial,
+  });
+}
+
+class CallkeepManager {
   static final CallkeepManager _instance = CallkeepManager._internal();
 
   factory CallkeepManager() {
@@ -18,19 +32,22 @@ class CallkeepManager implements CallkeepManagerInterface {
 
   final FlutterCallkeep callkeep = FlutterCallkeep();
 
-  bool isActiveAudio = false;
+  bool _isActiveAudio = false;
+  bool get isActiveAudio => _isActiveAudio;
 
   // current call uuid handled by callkit
-  // TODO: - change with more properties if needed to handle multiple calls or complex call flow
-  String _currentCallUuid = '';
+  CallKitModel _currentCallKit = CallKitModel();
+
+  /// list of handled call uuids (handled by callkit) but not found in stringee calls
+  /// end/answer call in callkit but not have stringee call to handle
+  // final List<CallKitModel> _handledCallUuids = [];
 
   String _pushToken = '';
   String get pushToken => _pushToken;
 
-  @override
-  Future<Result> reportOutgoingCallIfNeeded({
-    required StringeeCallModel stringeeCallModel,
-  }) async {
+  /// report outgoing call to callkit
+  Future<Result> reportOutgoingCallIfNeeded(
+      StringeeCallModel stringeeCallModel) async {
     final uuid = const Uuid().v4();
     stringeeCallModel.setUuid(uuid);
     await callkeep.startCall(
@@ -40,39 +57,50 @@ class CallkeepManager implements CallkeepManagerInterface {
       handleType: 'generic',
       hasVideo: stringeeCallModel.call.isVideoCall,
     );
-    _currentCallUuid = uuid;
+    _currentCallKit = CallKitModel(
+      uuid: uuid,
+      callId: stringeeCallModel.call.callId,
+      serial: stringeeCallModel.call.serial,
+    );
     debugPrint(
         'reportOutgoingCallIfNeeded uuid: $uuid ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
     return Result.success('Report outgoing call callkit successfully');
   }
 
-  @override
+  /// report incoming call to callkit if needed
   Future<Result> reportIncomingCallIfNeeded(
-      {required StringeeCallModel stringeeCallModel,
-      bool fromPushKit = false}) async {
+      StringeeCallModel stringeeCallModel) async {
     debugPrint(
-        'reportIncomingCallIfNeeded current: $_currentCallUuid uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from}');
-    if (_currentCallUuid.isEmpty) {
+        'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from}');
+    if (_currentCallKit.uuid == null) {
       final uuid = const Uuid().v4();
       stringeeCallModel.setUuid(uuid);
-      _currentCallUuid = uuid;
+      _currentCallKit = CallKitModel(
+        uuid: uuid,
+        callId: stringeeCallModel.call.callId,
+        serial: stringeeCallModel.call.serial,
+      );
       await callkeep.displayIncomingCall(
         uuid,
         stringeeCallModel.call.from ?? '',
+        localizedCallerName: stringeeCallModel.call.fromAlias ?? '',
         handleType: 'generic',
         hasVideo: stringeeCallModel.call.isVideoCall,
       );
-    } else {
+    } else if (_currentCallKit.callId == stringeeCallModel.call.callId &&
+        _currentCallKit.serial == stringeeCallModel.call.serial) {
+      // check if the call is already handled
       // call already handled from pushkit
       // set current uuid to call model
-      stringeeCallModel.setUuid(_currentCallUuid);
+      stringeeCallModel.setUuid(_currentCallKit.uuid!);
+    } else {
+      // TODO: - incoming all different current call from pushkit
     }
     return Result.success('Report incoming call callkit successfully');
   }
 
-  @override
-  Future<Result> answerCallIfNeeded(
-      {required StringeeCallModel stringeeCallModel}) async {
+  /// answer call from callkit if needed
+  Future<Result> answerCallIfNeeded(StringeeCallModel stringeeCallModel) async {
     if (stringeeCallModel.uuid.isEmpty) {
       return Result.failure('uuid is empty');
     }
@@ -87,14 +115,17 @@ class CallkeepManager implements CallkeepManagerInterface {
     return Result.success('Answer callkit successfully');
   }
 
-  @override
+  /// end call from callkit if needed
   Future<Result> reportEndCallIfNeeded(
       {required StringeeCallModel stringeeCallModel, int? reason}) async {
     if (stringeeCallModel.uuid.isEmpty) {
       return Result.failure('uuid is empty');
     }
     debugPrint(
-        'reportEndCallIfNeeded currentCallUuid:$_currentCallUuid ${stringeeCallModel.uuid} reason $reason');
+        'reportEndCallIfNeeded currentCallUuid:${_currentCallKit.uuid} ${stringeeCallModel.uuid} reason $reason');
+    if (_currentCallKit.uuid != stringeeCallModel.uuid) {
+      return Result.failure('uuid is not matched');
+    }
     if (reason == null) {
       await callkeep.endCall(stringeeCallModel.uuid);
     } else {
@@ -102,9 +133,41 @@ class CallkeepManager implements CallkeepManagerInterface {
       // after report, end stringee call
       _endCall(stringeeCallModel.uuid);
     }
-    _currentCallUuid = '';
+    _currentCallKit = CallKitModel();
     return Result.success(
         'End callkit successfully ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
+  }
+
+  /// mute call from callkit if needed
+  Future<Result> reportMuteCallIfNeeded({
+    required StringeeCallModel stringeeCallModel,
+    required bool muted,
+  }) async {
+    if (stringeeCallModel.uuid.isEmpty) {
+      return Result.failure('uuid is empty');
+    }
+    debugPrint('reportMuteCallIfNeeded ${stringeeCallModel.uuid} $muted');
+    await callkeep.setMutedCall(stringeeCallModel.uuid, muted);
+    return Result.success('Mute callkit successfully');
+  }
+
+  /// check if callkit has active call
+  Future<bool> hasActiveCall() async {
+    // current callkeep doesn't support get all active calls
+    // so we need to check if there is any stringee call is active
+    final calls = StringeeCallManager().calls;
+    if (calls.isEmpty) {
+      return false;
+    }
+    bool hasActiveCall = false;
+    for (final call in calls) {
+      final isActive = await callkeep.isCallActive(call.uuid);
+      if (isActive) {
+        hasActiveCall = true;
+        break;
+      }
+    }
+    return hasActiveCall;
   }
 
   void configureCallKeep({String? appName}) {
@@ -128,27 +191,17 @@ class CallkeepManager implements CallkeepManagerInterface {
     // audio session
     callkeep.on(CallKeepDidActivateAudioSession(), (event) {
       debugPrint('CallKeepDidActivateAudioSession');
-      isActiveAudio = true;
+      _isActiveAudio = true;
     });
     callkeep.on(CallKeepDidDeactivateAudioSession(), (event) {
       debugPrint('CallKeepDidDeactivateAudioSession');
-      isActiveAudio = false;
+      _isActiveAudio = false;
     });
 
     // call actions
-    callkeep.on(CallKeepDidReceiveStartCallAction(), (event) {
-      // start a call
-      // debugPrint('CallKeepDidReceiveStartCallAction ${event.callUUID}');
-      // if (event.callUUID != null) {
-      //   final call = StringeeCallManager().callWithUuid(event.callUUID!);
-      //   if (call != null) {
-      //     call.makeCall();
-      //   }
-      // }
-    });
+    callkeep.on(CallKeepDidReceiveStartCallAction(), (event) {});
     callkeep.on(CallKeepPerformAnswerCallAction(), (event) {
       // answer a call
-      debugPrint('CallKeepPerformAnswerCallAction ${event.callUUID}');
       if (event.callUUID != null) {
         _answerCall(event.callUUID!);
       }
@@ -166,31 +219,37 @@ class CallkeepManager implements CallkeepManagerInterface {
       // final hasVideo = event.hasVideo ?? false;
 
       // if call was handled in app
-      if (_currentCallUuid.isNotEmpty) {
+      if (_currentCallKit.uuid != null) {
         // report call already handled
         // end call from pushkit
         if (event.uuid != null &&
             event.uuid!.isNotEmpty &&
             event.fromPushKit == true) {
-          final call = StringeeCallManager().callWithUuid(_currentCallUuid);
+          final call =
+              StringeeCallManager().callWithUuid(_currentCallKit.uuid!);
           if (call != null && call.call.callId == event.callId) {
             debugPrint(
-                'CallKeepPushKitReceivedNotification currentUuid: $_currentCallUuid end call ${event.uuid}');
+                'CallKeepPushKitReceivedNotification currentUuid: ${_currentCallKit.uuid} end call ${event.uuid}');
             callkeep.endCall(event.uuid!);
           }
         }
       } else {
         // set current call uuid from pushkit
         if (event.uuid != null && event.uuid!.isNotEmpty) {
-          _currentCallUuid = event.uuid!;
+          _currentCallKit = CallKitModel(
+            uuid: event.uuid,
+            callId: event.callId,
+            serial: event.serial,
+          );
         }
       }
     });
 
     callkeep.on(CallKeepDidPerformSetMutedCallAction(), (event) {
       // mute/unmute call
-      debugPrint(
-          'CallKeepDidPerformSetMutedCallAction ${event.callUUID} ${event.muted}');
+      if (event.callUUID != null && event.muted != null) {
+        _muteCall(event.callUUID!, event.muted!);
+      }
     });
 
     callkeep.on(CallKeepDidToggleHoldAction(), (event) {
@@ -211,12 +270,19 @@ class CallkeepManager implements CallkeepManagerInterface {
     });
   }
 
+  _muteCall(String uuid, bool muted) {
+    final call = StringeeCallManager().callWithUuid(uuid);
+    if (call != null) {
+      call.mute(muted);
+    }
+  }
+
   // end stringee call
   _endCall(String uuid) {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       StringeeCallManager().endStringeeCall(call);
-      _currentCallUuid = '';
+      _currentCallKit = CallKitModel();
     }
   }
 
@@ -225,7 +291,10 @@ class CallkeepManager implements CallkeepManagerInterface {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       call.startTimerIfNeeded();
+      call.setIsClickedAnswer(true);
       StringeeCallManager().answerStringeeCall(call);
+    } else {
+      /// store uuid to handle later
     }
   }
 }
