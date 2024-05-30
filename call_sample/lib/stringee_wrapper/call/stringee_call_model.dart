@@ -64,6 +64,8 @@ class StringeeCallModel extends ChangeNotifier {
   Timer? _timer;
   bool _startedTimer = false;
 
+  Timer? _callTimeOutTimer;
+
   /// call time
   String _time = '00:00';
   String get time => _time;
@@ -85,6 +87,9 @@ class StringeeCallModel extends ChangeNotifier {
     _isClickedAnswer = value;
   }
 
+  // flag to check media state is connected
+  bool _mediaStateDidConnected = false;
+
   /// check to end call by reject or hangup
   bool get isShouldReject => isIncomingCall && !_isClickedAnswer;
 
@@ -104,6 +109,14 @@ class StringeeCallModel extends ChangeNotifier {
     // if (!isIncomingCall) {
     //   makeCall();
     // }
+
+    // start time out
+    _callTimeOutTimer =
+        Timer(Duration(seconds: StringeeWrapper().callTimeout), () {
+      if (!_mediaStateDidConnected) {
+        _endCall();
+      }
+    });
   }
 
   _handleStringeeCallEvent(Map<dynamic, dynamic> event) async {
@@ -203,6 +216,10 @@ class StringeeCallModel extends ChangeNotifier {
 
   void _handleMediaStateChangeEvent(StringeeMediaState state) {
     _mediaState = state;
+    if (state == StringeeMediaState.connected) {
+      _mediaStateDidConnected = true;
+      _callTimeOutTimer?.cancel();
+    }
     notifyListeners();
   }
 

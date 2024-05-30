@@ -41,6 +41,8 @@ class StringeeWrapper {
 
   StringeeListener? get stringeeListener => _stringeeListener;
 
+  // timeout for call
+  int callTimeout = 60;
   bool _isEnablePush = false;
   bool get isEnablePush => _isEnablePush;
   bool get connected => _stringeeClient.hasConnected;

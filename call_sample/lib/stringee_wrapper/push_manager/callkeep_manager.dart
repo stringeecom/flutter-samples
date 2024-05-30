@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
 import 'package:call_sample/stringee_wrapper/common/result.dart';
 import 'package:callkeep/callkeep.dart';
@@ -5,21 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../call/stringee_call_model.dart';
-
-class CallKitModel {
-  // call uuid handled by callkit
-  String? uuid;
-  // call id of the stringee call
-  String? callId;
-  // serial of the stringee call
-  int? serial;
-
-  CallKitModel({
-    this.uuid,
-    this.callId,
-    this.serial,
-  });
-}
+import 'call_kit_model.dart';
 
 class CallkeepManager {
   static final CallkeepManager _instance = CallkeepManager._internal();
@@ -36,11 +24,12 @@ class CallkeepManager {
   bool get isActiveAudio => _isActiveAudio;
 
   // current call uuid handled by callkit
+  // to handle multi call change to list if needed
   CallKitModel _currentCallKit = CallKitModel();
 
   /// list of handled call uuids (handled by callkit) but not found in stringee calls
   /// end/answer call in callkit but not have stringee call to handle
-  // final List<CallKitModel> _handledCallUuids = [];
+  final List<CallKitModel> _handledCallUuids = [];
 
   String _pushToken = '';
   String get pushToken => _pushToken;
@@ -61,6 +50,7 @@ class CallkeepManager {
       uuid: uuid,
       callId: stringeeCallModel.call.callId,
       serial: stringeeCallModel.call.serial,
+      callModel: stringeeCallModel,
     );
     debugPrint(
         'reportOutgoingCallIfNeeded uuid: $uuid ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
@@ -79,6 +69,7 @@ class CallkeepManager {
         uuid: uuid,
         callId: stringeeCallModel.call.callId,
         serial: stringeeCallModel.call.serial,
+        callModel: stringeeCallModel,
       );
       await callkeep.displayIncomingCall(
         uuid,
@@ -93,6 +84,17 @@ class CallkeepManager {
       // call already handled from pushkit
       // set current uuid to call model
       stringeeCallModel.setUuid(_currentCallKit.uuid!);
+      _currentCallKit.callModel = stringeeCallModel;
+      _currentCallKit.stopCountTimeout();
+
+      // check if call have answer in callkit before if needed
+      if (_handledCallUuids
+          .where((element) => element.uuid == _currentCallKit.uuid)
+          .isNotEmpty) {
+        StringeeCallManager().answerStringeeCall(stringeeCallModel);
+        _handledCallUuids
+            .removeWhere((element) => element.uuid == _currentCallKit.uuid);
+      }
     } else {
       // TODO: - incoming all different current call from pushkit
     }
@@ -295,6 +297,9 @@ class CallkeepManager {
       StringeeCallManager().answerStringeeCall(call);
     } else {
       /// store uuid to handle later
+      if (_currentCallKit.uuid != null) {
+        _handledCallUuids.add(_currentCallKit);
+      }
     }
   }
 }
