@@ -169,3 +169,27 @@ To receive incoming calls when app on background/terminated, you have to enable 
 - Android: FCM
 
 **NOTE: When push was enabled, your app should call [connect](#connect) as soon as possible to receive incoming call from Stringee.**
+
+***iOS: ONLY WORKING ON REAL DEVICE, not on simulator(Callkit framework not working on simulator)***
+
+<!-- ### Configure push
+
+1. Configure on Stringee developer. Follow steps in [Push Notification](https://developer.stringee.com/docs/push-notification/flutter)
+
+2. Configue on your project
+
+    - iOS
+        - Info.plist
+
+            ```xml
+            <key>UIBackgroundModes</key>
+            <array>
+            <string>voip</string>
+            <string>remote-notification</string>
+            <string>processing</string> //you can add this if needed
+            </array>
+            ```
+
+        - Add Capability -> Push Notifications
+
+    - Android -->
