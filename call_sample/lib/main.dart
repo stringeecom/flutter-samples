@@ -93,7 +93,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   void _updateStateWithStringeeWrapper() async {
     setState(() {
-      isEnablePush = StringeeWrapper().isEnablePush;
       connected = StringeeWrapper().connected;
     });
   }

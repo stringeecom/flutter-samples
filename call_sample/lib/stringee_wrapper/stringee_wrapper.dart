@@ -36,16 +36,21 @@ class StringeeWrapper {
   }
 
   late StringeeClient _stringeeClient;
-  StringeeClient get stringeeClient => _stringeeClient;
   StringeeListener? _stringeeListener;
 
   StringeeListener? get stringeeListener => _stringeeListener;
 
   // timeout for call
-  int callTimeout = 60;
-  bool _isEnablePush = false;
-  bool get isEnablePush => _isEnablePush;
+  int _callTimeout = 60;
+  int get callTimeout => _callTimeout;
   bool get connected => _stringeeClient.hasConnected;
+
+  /// configure properties for call
+  /// [callTimeOut] is the timeout for call, default is 60
+  /// more properties can be added here
+  void configure({int callTimeOut = 60}) {
+    _callTimeout = callTimeOut;
+  }
 
   /// connect to Stringee server
   /// [token] is the token of the user
@@ -53,28 +58,36 @@ class StringeeWrapper {
     _stringeeClient.connect(token);
   }
 
-  /// enable push to receive call when app is in background
-  Future<void> enablePush({bool? isProduction, bool? isVoip}) async {
-    _isEnablePush = true;
+  /// enable push to receive notification incoming call when app is in background
+  Future<bool> enablePush({bool? isProduction, bool? isVoip}) async {
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      _stringeeClient.registerPush(
+      final result = await _stringeeClient.registerPush(
         CallkeepManager().pushToken,
         isVoip: isVoip,
         // if isProduction is null, use kReleaseMode
         isProduction: isProduction ?? kReleaseMode,
       );
-      return;
+      if (result['status']) {
+        return true;
+      }
+      return false;
     }
     // TODO: - handle push for android
+    return true;
   }
 
   /// unregister push to receive call when app is in background
-  Future<void> unregisterPush() async {
-    _isEnablePush = false;
+  Future<bool> unregisterPush() async {
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      _stringeeClient.unregisterPush(CallkeepManager().pushToken);
+      final result =
+          await _stringeeClient.unregisterPush(CallkeepManager().pushToken);
+      if (result['status']) {
+        return true;
+      }
+      return false;
     }
     // TODO: - handle push for android
+    return true;
   }
 
   /// disconnect from Stringee server
