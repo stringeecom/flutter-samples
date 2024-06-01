@@ -176,7 +176,7 @@ To receive incoming calls when app on background/terminated, you have to enable 
 
 1. Configure on Stringee developer. Follow steps in [Push Notification](https://developer.stringee.com/docs/push-notification/flutter)
 
-2. Configue on your project
+2. Configure on your project
 
     - iOS
         - Info.plist

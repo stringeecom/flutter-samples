@@ -13,5 +13,6 @@ class Result<T> {
   }
 
   bool get isSuccess => success != null;
+
   bool get isFailure => failure != null;
 }

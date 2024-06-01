@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 class SCCallingWidget extends StatelessWidget {
   final Widget body;
   final Widget bottom;
+
   const SCCallingWidget({
     super.key,
     required this.body,

@@ -21,6 +21,7 @@ class CallkeepManager {
   final FlutterCallkeep callkeep = FlutterCallkeep();
 
   bool _isActiveAudio = false;
+
   bool get isActiveAudio => _isActiveAudio;
 
   // current call uuid handled by callkit
@@ -32,6 +33,7 @@ class CallkeepManager {
   final List<CallKitModel> _handledCallUuids = [];
 
   String _pushToken = '';
+
   String get pushToken => _pushToken;
 
   /// report outgoing call to callkit
@@ -293,7 +295,6 @@ class CallkeepManager {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       call.startTimerIfNeeded();
-      call.setIsClickedAnswer(true);
       StringeeCallManager().answerStringeeCall(call);
     } else {
       /// store uuid to handle later

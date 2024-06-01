@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../interfaces/stringee_call_interface.dart';
+import '../push_manager/android_push_manager.dart';
 import '../push_manager/callkeep_manager.dart';
 import 'stringee_call_model.dart';
 
@@ -25,6 +26,7 @@ class StringeeCallManager {
 
   /// list of calls
   final List<StringeeCallModel> _calls = [];
+
   List<StringeeCallModel> get calls => _calls;
 
   StringeeCallModel? callWithUuid(String uuid) {
@@ -55,20 +57,37 @@ class StringeeCallManager {
     );
 
     // check current call if needed
-    if (await CallkeepManager().hasActiveCall()) {
+    if ((!isIOS && _calls.isNotEmpty) ||
+        await CallkeepManager().hasActiveCall()) {
       // do nothing if there is an active call
       return Result.failure('There is an active call');
+    }
+
+    if (!isIOS) {
+      _calls.add(stringeeCallModel);
     }
 
     final initializedCallResult = await stringeeCallModel.call.initAnswer();
 
     if (initializedCallResult['status']) {
-      // add the call to the list
-      _calls.add(stringeeCallModel);
       if (isIOS) {
+        _calls.add(stringeeCallModel);
+        // add the call to the list
         CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
       } else {
-        // TODO: - handle incoming call for android
+        bool isPermissionGranted = await StringeeWrapper().requestPermissions();
+        if (isPermissionGranted) {
+          if (AndroidPushManager().isRejectFromPush) {
+            stringeeCallModel.rejectCall();
+            AndroidPushManager().isRejectFromPush = false;
+          } else if (AndroidPushManager().isAnswerFromPush) {
+            stringeeCallModel.answerCall();
+            AndroidPushManager().isAnswerFromPush = false;
+          }
+        } else {
+          stringeeCallModel.rejectCall();
+          return Result.failure('Permission is not granted');
+        }
       }
       return Result.success(stringeeCallModel);
     } else {
@@ -90,6 +109,9 @@ class StringeeCallManager {
     if (call == null && call2 == null) {
       return Result.failure('Call cannot be null');
     }
+    if (!isPermissionGranted && !isIOS) {
+      return Result.failure('Permission not granted');
+    }
     // create a call model
     StringeeCallModel stringeeCallModel = StringeeCallModel(
       call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
@@ -101,15 +123,18 @@ class StringeeCallManager {
     );
     _calls.add(stringeeCallModel);
     await stringeeCallModel.makeCall();
+    await stringeeCallModel.call
+        .setSpeakerphoneOn(stringeeCallModel.isVideoCall);
     return Result.success(stringeeCallModel);
   }
 
   Future<void> answerStringeeCall(StringeeCallModel call) async {
     /// check if the call is incoming and the audio is active
-    /// taipv buggggggggg
     if (call.isIncomingCall) {
       debugPrint('Answer call with audio ${CallkeepManager().isActiveAudio}');
+      call.signalingState = StringeeSignalingState.answered;
       await call.call.answer();
+      await call.call.setSpeakerphoneOn(call.isVideoCall);
     }
   }
 

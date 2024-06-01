@@ -1,12 +1,45 @@
+import 'dart:convert';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 
+import 'firebase_options.dart';
+import 'stringee_wrapper/common/common.dart';
+import 'stringee_wrapper/push_manager/android_push_manager.dart';
 import 'stringee_wrapper/stringee_wrapper.dart';
 
-const accessToken =
-    'eyJjdHkiOiJzdHJpbmdlZS1hcGk7dj0xIiwidHlwIjoiSldUIiwiYWxnIjoiSFMyNTYifQ.eyJqdGkiOiJTSy4wLkFCMmFIeUpVNkVwakEyMHN6MWw2NG1WRklhVzRaQ1YyLTE3MTU5MzA3MDMiLCJpc3MiOiJTSy4wLkFCMmFIeUpVNkVwakEyMHN6MWw2NG1WRklhVzRaQ1YyIiwiZXhwIjoxNzE4NTIyNzAzLCJ1c2VySWQiOiJ0YWlwdiJ9.WLhteT-xDFBN2icAnSVRE4wwiNabuSbIdZKJFCS7lJo';
+@pragma('vm:entry-point')
+Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
+  if (!_initialized) {
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
+    _initialized = true;
+  }
+  debugPrint("Handling a background message: ${remoteMessage.data}");
+
+  Map<dynamic, dynamic> notiData = remoteMessage.data;
+  Map<dynamic, dynamic> data = json.decode(notiData['data']);
+  bool isStringeePush = notiData['stringeePushNotification'] == '1.0';
+  if (isStringeePush) {
+    await AndroidPushManager().handleStringeePush(data);
+  }
+}
+
+bool _initialized = false;
+const accessToken = 'PUT_YOUR_TOKEN_HERE';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!isIOS) {
+    AndroidPushManager().handleNotificationAction();
+    if (!_initialized) {
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
+      _initialized = true;
+    }
+    FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
+  }
   // connect when app start
   StringeeWrapper().connect(accessToken);
   runApp(const MyApp());
@@ -19,42 +52,68 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Call sample',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Call sample'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
+
   final String title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   bool isVideoCall = false;
   bool connected = false;
   bool connecting = false;
   bool isEnablePush = false;
+  String connectStatus = 'Not connected...';
 
   String to = '';
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint("didChangeAppLifecycle - $state");
+    if (state == AppLifecycleState.resumed) {
+      AndroidPushManager().cancelIncomingCallNotification();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    AndroidPushManager().release();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    // add listner to listen event from StringeeWrapper
+    if (!isIOS) {
+      AndroidPushManager().listenNotificationSelect();
+      StringeeWrapper().requestPermissions();
+    }
+
+    // add listener to listen event from StringeeWrapper
     StringeeWrapper().addListener(StringeeListener(
-      onConnected: () {
+      onConnected: (userId) {
         debugPrint('Connected');
         setState(() {
           connected = true;
           connecting = false;
+          connectStatus = 'Connected as $userId';
         });
       },
       onDisConnected: () {
@@ -62,14 +121,21 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           connected = false;
           connecting = false;
+          connectStatus = 'Disconnected';
         });
       },
       onRequestNewToken: () {
         // reconnect with latest token
         StringeeWrapper().connect(accessToken);
+        setState(() {
+          connectStatus = 'Request new token';
+        });
       },
       onConnectError: (code, msg) {
         debugPrint('Connect error: $code - $msg');
+        setState(() {
+          connectStatus = 'Connect fail: $msg';
+        });
       },
       onPresentCallWidget: (callWidget) {
         debugPrint('onPresentCallWidget: ${callWidget.hashCode}');
@@ -168,6 +234,12 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
+                Center(
+                  child: Text(
+                    connectStatus,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: TextField(
@@ -218,7 +290,6 @@ class _MyHomePageState extends State<MyHomePage> {
             return;
           }
           StringeeWrapper().makeCall(
-            from: 'taipv',
             to: to,
             isVideoCall: isVideoCall,
             videoQuality: VideoQuality.fullHd,

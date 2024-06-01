@@ -38,7 +38,7 @@ class StringeeRingingWidget extends StatelessWidget {
                     width: double.maxFinite,
                   ),
                   Text(
-                    model.signalingState.name,
+                    model.callState.name,
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 15.0,

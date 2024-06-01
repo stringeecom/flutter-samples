@@ -1,8 +1,12 @@
 import 'dart:async';
 
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
+import 'package:call_sample/stringee_wrapper/push_manager/android_push_manager.dart';
 import 'package:call_sample/stringee_wrapper/widgets/stringee_call_widget.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
@@ -10,9 +14,10 @@ import 'common/common.dart';
 import 'push_manager/callkeep_manager.dart';
 import 'stringee_listener.dart';
 
-export 'stringee_listener.dart';
 export 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart'
     show VideoQuality;
+
+export 'stringee_listener.dart';
 
 class StringeeWrapper {
   static final StringeeWrapper _instance = StringeeWrapper._internal();
@@ -28,7 +33,6 @@ class StringeeWrapper {
       _handleStringeeEvent(event as Map<dynamic, dynamic>);
     });
 
-    /// TODO: - configure callkeep for android
     /// move this to somewhere else to configure with more options like appName, icon, etc.
     if (isIOS) {
       CallkeepManager().configureCallKeep();
@@ -38,19 +42,19 @@ class StringeeWrapper {
   late StringeeClient _stringeeClient;
   StringeeListener? _stringeeListener;
 
+  // timeout for call
+  final int _callTimeout = 60;
+  bool _isEnablePush = false;
+
+  StringeeClient get stringeeClient => _stringeeClient;
+
   StringeeListener? get stringeeListener => _stringeeListener;
 
-  // timeout for call
-  int _callTimeout = 60;
-  int get callTimeout => _callTimeout;
-  bool get connected => _stringeeClient.hasConnected;
+  bool get isEnablePush => _isEnablePush;
 
-  /// configure properties for call
-  /// [callTimeOut] is the timeout for call, default is 60
-  /// more properties can be added here
-  void configure({int callTimeOut = 60}) {
-    _callTimeout = callTimeOut;
-  }
+  int get callTimeout => _callTimeout;
+
+  bool get connected => _stringeeClient.hasConnected;
 
   /// connect to Stringee server
   /// [token] is the token of the user
@@ -58,36 +62,37 @@ class StringeeWrapper {
     _stringeeClient.connect(token);
   }
 
-  /// enable push to receive notification incoming call when app is in background
-  Future<bool> enablePush({bool? isProduction, bool? isVoip}) async {
+  /// enable push to receive call when app is in background
+  Future<void> enablePush({bool? isProduction, bool? isVoip}) async {
+    _isEnablePush = true;
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      final result = await _stringeeClient.registerPush(
+      _stringeeClient.registerPush(
         CallkeepManager().pushToken,
         isVoip: isVoip,
         // if isProduction is null, use kReleaseMode
         isProduction: isProduction ?? kReleaseMode,
       );
-      if (result['status']) {
-        return true;
-      }
-      return false;
+      return;
     }
-    // TODO: - handle push for android
-    return true;
+    if (!isIOS) {
+      FirebaseMessaging.instance.getToken().then((token) {
+        debugPrint('Token: $token');
+        AndroidPushManager().pushToken = token;
+        _stringeeClient.registerPush(token!);
+      });
+      return;
+    }
   }
 
   /// unregister push to receive call when app is in background
-  Future<bool> unregisterPush() async {
+  Future<void> unregisterPush() async {
+    _isEnablePush = false;
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      final result =
-          await _stringeeClient.unregisterPush(CallkeepManager().pushToken);
-      if (result['status']) {
-        return true;
-      }
-      return false;
+      _stringeeClient.unregisterPush(CallkeepManager().pushToken);
     }
-    // TODO: - handle push for android
-    return true;
+    if (!isIOS) {
+      _stringeeClient.unregisterPush(AndroidPushManager().pushToken!);
+    }
   }
 
   /// disconnect from Stringee server
@@ -103,7 +108,7 @@ class StringeeWrapper {
   /// if [isVideoCall] is false, the call is an audio call
   /// [isVideoCall] default is false
   Future<void> makeCall({
-    required String from,
+    String? from,
     required String to,
     bool isVideoCall = false,
     Map<dynamic, dynamic>? customData,
@@ -119,7 +124,7 @@ class StringeeWrapper {
     final result = await StringeeCallManager.instance.handleOutgoingCall(
       call: call,
       call2: call2,
-      from: from,
+      from: from ?? _stringeeClient.userId!,
       to: to,
     );
     if (result.isSuccess) {
@@ -141,7 +146,7 @@ class StringeeWrapper {
   _handleStringeeEvent(Map<dynamic, dynamic> event) async {
     switch (event['eventType']) {
       case StringeeClientEvents.didConnect:
-        _stringeeListener?.onConnected.call();
+        _stringeeListener?.onConnected.call(_stringeeClient.userId!);
         break;
       case StringeeClientEvents.didDisconnect:
         _stringeeListener?.onDisConnected.call();
@@ -182,5 +187,34 @@ class StringeeWrapper {
       debugPrint('Error: ${result.failure}');
       // TODO: - handle error if needed
     }
+  }
+
+  Future<bool> requestPermissions() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    List<Permission> permissions = [
+      Permission.camera,
+      Permission.microphone,
+    ];
+    if (androidInfo.version.sdkInt >= 31) {
+      permissions.add(Permission.bluetoothConnect);
+    }
+    if (androidInfo.version.sdkInt >= 33) {
+      permissions.add(Permission.notification);
+    }
+
+    Map<Permission, PermissionStatus> permissionsStatus =
+        await permissions.request();
+    debugPrint('Permission statuses - $permissionsStatus');
+    bool isAllGranted = true;
+    permissionsStatus.forEach((key, value) {
+      if (value != PermissionStatus.granted) {
+        isAllGranted = false;
+      }
+    });
+    if (isAllGranted) {
+      isPermissionGranted = true;
+    }
+    return isAllGranted;
   }
 }

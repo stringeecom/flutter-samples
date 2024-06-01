@@ -4,35 +4,59 @@ import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 abstract class StringeeCallInterface {
   String? get callId;
+
   int? get serial;
+
   String? get from;
+
   String? get to;
+
   String? get fromAlias;
+
   String? get toAlias;
+
   // bool get isIncomingCall;
   StringeeCallType? get callType;
+
   String? get customDataFromYourServer;
+
   bool get isVideoCall;
+
   StreamController<dynamic> get eventStreamController;
+
   // SignalingState get signalingState;
   // bool get answeredOnAnotherDevice;
   // VideoResolution get videoResolution;
   // bool get peerToPeerCall;
 
   Future<Map<dynamic, dynamic>> makeCall(Map<dynamic, dynamic> parameters);
+
   Future<Map<dynamic, dynamic>> makeCallFromParams(MakeCallParams params);
+
   Future<Map<dynamic, dynamic>> initAnswer();
+
   Future<Map<dynamic, dynamic>> answer();
+
   Future<Map<dynamic, dynamic>> reject();
+
   Future<Map<dynamic, dynamic>> hangup();
+
   Future<Map<dynamic, dynamic>> send(String dtmf);
+
   Future<Map<dynamic, dynamic>> sendCallInfo(Map<dynamic, dynamic> callInfo);
+
   Future<Map<dynamic, dynamic>> getCallStats();
+
   Future<Map<dynamic, dynamic>> mute(bool mute);
+
   Future<Map<dynamic, dynamic>> enableVideo(bool enableVideo);
+
   Future<Map<dynamic, dynamic>> setSpeakerphoneOn(bool speakerPhoneOn);
+
   Future<Map<dynamic, dynamic>> switchCamera({String? cameraId});
+
   Future<Map<dynamic, dynamic>> resumeVideo();
+
   Future<Map<dynamic, dynamic>> setMirror(bool isLocal, bool isMirror);
 }
 

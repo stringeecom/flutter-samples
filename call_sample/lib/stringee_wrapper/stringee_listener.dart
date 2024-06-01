@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 /// A listener for Stringee events
 class StringeeListener {
-  final Function() onConnected;
+  final Function(String userId) onConnected;
   final Function() onDisConnected;
   final Function() onRequestNewToken;
   final Function(Map<dynamic, dynamic> event)? onReceiveCallInfo;

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class StringeeAvatarWidget extends StatelessWidget {
   final Color backgroundColor;
   final String? text;
+
   const StringeeAvatarWidget({
     super.key,
     this.backgroundColor = const Color.fromRGBO(64, 182, 73, 1.0),

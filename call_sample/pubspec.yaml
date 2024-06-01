@@ -6,12 +6,12 @@ version: 0.0.1+1
 
 environment:
   sdk: '>=3.3.4 <4.0.0'
-  
+
 dependencies:
   flutter:
     sdk: flutter
-    
-  cupertino_icons: ^1.0.6
+
+  cupertino_icons: ^1.0.8
 
   stringee_flutter_plugin:
     git:
@@ -19,19 +19,26 @@ dependencies:
       ref: master
 
   #for ios
-  uuid: ^4.3.3
+  uuid: ^4.4.0
   callkeep:
     git:
       url: https://github.com/stringeecom/callkeep.git
-      ref: master
+      ref: anhnqk/feature/SG-18526-upgrade-android-version
   provider: ^6.1.2
+  
+  #for android
+  flutter_local_notifications: ^17.1.2
+  firebase_core: ^2.32.0
+  firebase_messaging: ^14.9.4
+  permission_handler: ^11.3.1
+  device_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-    
+
   flutter_lints: ^4.0.0
-  
+
 flutter:
 
   uses-material-design: true

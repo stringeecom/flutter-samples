@@ -4,6 +4,8 @@ import 'package:call_sample/stringee_wrapper/widgets/stringee_ringing_widget.dar
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../common/common.dart';
+
 class StringeeCallWidget extends StatefulWidget {
   const StringeeCallWidget({super.key});
 
@@ -30,10 +32,20 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
   @override
   Widget build(BuildContext context) {
     final model = Provider.of<StringeeCallModel>(context, listen: true);
-
+    if (model.callState == CallState.ended && model.isIncomingCall) {
+      if (mounted) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        });
+      }
+    }
     return Scaffold(
       backgroundColor: Colors.white,
-      body: !model.isInCall
+      body: model.callState == CallState.incoming ||
+              model.callState == CallState.calling ||
+              model.callState == CallState.ringing
           ? const StringeeRingingWidget()
           : const StringeeIncallWidget(),
     );

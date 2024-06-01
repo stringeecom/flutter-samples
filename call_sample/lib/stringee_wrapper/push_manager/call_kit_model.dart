@@ -6,10 +6,13 @@ import 'callkeep_manager.dart';
 class CallKitModel {
   // call uuid handled by callkit
   String? uuid;
+
   // call id of the stringee call
   String? callId;
+
   // serial of the stringee call
   int? serial;
+
   // stringee call model
   StringeeCallModel? callModel;
 
@@ -34,6 +37,7 @@ class CallKitModel {
 
   Timer? _timer;
   int _count = 0;
+
   int get count => _count;
 
   _startCountTimeout() {

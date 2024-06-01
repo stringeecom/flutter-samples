@@ -47,7 +47,7 @@ class StringeeIncallWidget extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.start,
                         children: [
                           Text(
-                            model.signalingState.name,
+                            model.callState.name,
                             style: const TextStyle(
                               color: Colors.white70,
                               fontSize: 15.0,
