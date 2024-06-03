@@ -10,6 +10,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 class EnvironmentConfig {
   // ignore: constant_identifier_names
   static const String API_SID_KEY = String.fromEnvironment('API_SID_KEY');
+
   // ignore: constant_identifier_names
   static const String API_SECRET_KEY = String.fromEnvironment('API_SECRET_KEY');
 }

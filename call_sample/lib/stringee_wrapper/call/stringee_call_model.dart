@@ -21,9 +21,7 @@ class StringeeCallModel extends ChangeNotifier {
   /// call properties
   StringeeSignalingState _signalingState = StringeeSignalingState.calling;
   StringeeMediaState _mediaState = StringeeMediaState.disconnected;
-  CallState _callState = CallState.calling;
-
-  CallState get callState => _callState;
+  CallState callState = CallState.calling;
 
   set signalingState(StringeeSignalingState value) {
     _signalingState = value;
@@ -100,12 +98,12 @@ class StringeeCallModel extends ChangeNotifier {
       _handleStringeeCallEvent(event as Map<dynamic, dynamic>);
     });
 
-    _callState = isIncomingCall ? CallState.incoming : CallState.calling;
+    callState = isIncomingCall ? CallState.incoming : CallState.calling;
 
     // start time out
     _callTimeOutTimer =
         Timer(Duration(seconds: StringeeWrapper().callTimeout), () {
-      if (_callState != CallState.started) {
+      if (callState != CallState.started) {
         _endCall();
       }
     });
@@ -187,24 +185,24 @@ class StringeeCallModel extends ChangeNotifier {
     debugPrint('_handleSignalingStateChangeEvent $state');
     switch (state) {
       case StringeeSignalingState.calling:
-        _callState = CallState.calling;
+        callState = CallState.calling;
         break;
       case StringeeSignalingState.ringing:
-        _callState = CallState.ringing;
+        callState = CallState.ringing;
         break;
       case StringeeSignalingState.answered:
-        _callState = CallState.starting;
+        callState = CallState.starting;
         if (_mediaState == StringeeMediaState.connected) {
           startTimerIfNeeded();
-          _callState = CallState.started;
+          callState = CallState.started;
         }
         break;
       case StringeeSignalingState.busy:
-        _callState = CallState.busy;
+        callState = CallState.busy;
         _endCall(reason: 3);
         break;
       case StringeeSignalingState.ended:
-        _callState = CallState.ended;
+        callState = CallState.ended;
         _endCall(reason: 2);
         break;
     }
@@ -218,7 +216,7 @@ class StringeeCallModel extends ChangeNotifier {
       _callTimeOutTimer?.cancel();
       if (_signalingState == StringeeSignalingState.answered) {
         startTimerIfNeeded();
-        _callState = CallState.started;
+        callState = CallState.started;
       }
     }
     notifyListeners();
@@ -239,13 +237,14 @@ class StringeeCallModel extends ChangeNotifier {
       if (isIOS) {
         // report end call if needed
         // reason -1000: handleOnAnotherDevice, do not need end stringee call
-        CallkeepManager()
-            .reportEndCallIfNeeded(stringeeCallModel: this, reason: -1000);
+        CallkeepManager().reportEndCallIfNeeded(stringeeCallModel: this);
+      } else {
+        StringeeWrapper()
+            .stringeeListener
+            ?.onDismissCallWidget
+            .call('Call is handle from another device');
       }
-      StringeeWrapper()
-          .stringeeListener
-          ?.onDismissCallWidget
-          .call('Call is handle from another device');
+      notifyListeners();
     }
   }
 
@@ -384,13 +383,13 @@ class StringeeCallModel extends ChangeNotifier {
   Future<Result> _answerCall() async {
     if (!_reportedAnsweredCall) {
       _reportedAnsweredCall = true;
-
       if (isIOS) {
         return CallkeepManager().answerCallIfNeeded(this);
       } else {
         await StringeeCallManager.instance.answerStringeeCall(this);
       }
     }
+    notifyListeners();
     return Result.success('Call answered already');
   }
 

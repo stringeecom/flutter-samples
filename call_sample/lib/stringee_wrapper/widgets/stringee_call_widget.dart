@@ -42,8 +42,9 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
       }
     }
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       body: model.callState == CallState.incoming ||
+              model.callState == CallState.starting ||
               model.callState == CallState.calling ||
               model.callState == CallState.ringing
           ? const StringeeRingingWidget()

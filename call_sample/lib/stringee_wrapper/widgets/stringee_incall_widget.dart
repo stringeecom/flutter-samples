@@ -147,13 +147,8 @@ class StringeeIncallWidget extends StatelessWidget {
             scalingType: ScalingType.fit,
             borderRadius: BorderRadius.circular(8),
           )
-        : Container(
-            height: 150.0,
-            width: 110.0,
-            decoration: const BoxDecoration(
-              color: Colors.grey,
-              borderRadius: BorderRadius.all(Radius.circular(8)),
-            ),
+        : const Placeholder(
+            color: Colors.black,
           );
   }
 
@@ -165,7 +160,7 @@ class StringeeIncallWidget extends StatelessWidget {
             isMirror: false,
             scalingType: ScalingType.fit,
           )
-        : Container(color: Colors.grey);
+        : const Placeholder(color: Colors.black );
   }
 
   Widget _btnMic(StringeeCallModel model) {

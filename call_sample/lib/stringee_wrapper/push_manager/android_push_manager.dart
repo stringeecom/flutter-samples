@@ -43,7 +43,9 @@ class AndroidPushManager {
     if (callStatus == 'started') {
       await showIncomingCallNotification(
           data['from']['alias'], data['from']['number']);
-    } else if (callStatus == 'ended') {
+    } else if (callStatus == 'ended' ||
+        callStatus == 'answered' ||
+        callStatus == 'busy') {
       await cancelIncomingCallNotification();
     }
   }

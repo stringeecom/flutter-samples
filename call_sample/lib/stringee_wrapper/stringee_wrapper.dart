@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
-import 'package:call_sample/stringee_wrapper/push_manager/android_push_manager.dart';
 import 'package:call_sample/stringee_wrapper/widgets/stringee_call_widget.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import 'common/common.dart';
@@ -44,13 +44,10 @@ class StringeeWrapper {
 
   // timeout for call
   final int _callTimeout = 60;
-  bool _isEnablePush = false;
 
   StringeeClient get stringeeClient => _stringeeClient;
 
   StringeeListener? get stringeeListener => _stringeeListener;
-
-  bool get isEnablePush => _isEnablePush;
 
   int get callTimeout => _callTimeout;
 
@@ -62,36 +59,60 @@ class StringeeWrapper {
     _stringeeClient.connect(token);
   }
 
-  /// enable push to receive call when app is in background
-  Future<void> enablePush({bool? isProduction, bool? isVoip}) async {
-    _isEnablePush = true;
+  /// register push to receive call when app is in background
+  Future<void> registerPush({bool? isProduction, bool? isVoip}) async {
     if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      _stringeeClient.registerPush(
+      Map<dynamic, dynamic> registerPushResult =
+          await _stringeeClient.registerPush(
         CallkeepManager().pushToken,
         isVoip: isVoip,
         // if isProduction is null, use kReleaseMode
         isProduction: isProduction ?? kReleaseMode,
       );
+      handleRegisterPushResult(
+        CallkeepManager().pushToken,
+        registerPushResult,
+      );
       return;
     }
     if (!isIOS) {
-      FirebaseMessaging.instance.getToken().then((token) {
-        debugPrint('Token: $token');
-        AndroidPushManager().pushToken = token;
-        _stringeeClient.registerPush(token!);
-      });
+      String deviceToken = await FirebaseMessaging.instance.getToken() ?? '';
+      if (deviceToken.isNotEmpty) {
+        Map<dynamic, dynamic> registerPushResult =
+            await _stringeeClient.registerPush(deviceToken);
+        handleRegisterPushResult(
+          deviceToken,
+          registerPushResult,
+        );
+      }
       return;
+    }
+  }
+
+  void handleRegisterPushResult(
+      String token, Map<dynamic, dynamic> value) async {
+    if (value['status']) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setBool('isPushRegistered', true);
+      prefs.setString('pushToken', token);
     }
   }
 
   /// unregister push to receive call when app is in background
   Future<void> unregisterPush() async {
-    _isEnablePush = false;
-    if (isIOS && CallkeepManager().pushToken.isNotEmpty) {
-      _stringeeClient.unregisterPush(CallkeepManager().pushToken);
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isPushRegistered = prefs.getBool('isPushRegistered') ?? false;
+    if (!isPushRegistered) {
+      return;
     }
-    if (!isIOS) {
-      _stringeeClient.unregisterPush(AndroidPushManager().pushToken!);
+    String token = prefs.getString('pushToken') ?? '';
+    if (token.isNotEmpty) {
+      Map<dynamic, dynamic> unRegisterPushResult =
+          await _stringeeClient.unregisterPush(token);
+      if (unRegisterPushResult['status']) {
+        prefs.remove('isPushRegistered');
+        prefs.remove('pushToken');
+      }
     }
   }
 
@@ -176,6 +197,7 @@ class StringeeWrapper {
   }
 
   _incomingCall(StringeeCall? call, StringeeCall2? call2) async {
+    debugPrint('Incoming call');
     final result = await StringeeCallManager.instance
         .handleIncomingCall(call: call, call2: call2);
     if (result.isSuccess) {
@@ -183,6 +205,7 @@ class StringeeWrapper {
         create: (_) => result.success,
         child: const StringeeCallWidget(),
       ));
+      debugPrint('Incoming call');
     } else {
       debugPrint('Error: ${result.failure}');
       // TODO: - handle error if needed
@@ -214,6 +237,12 @@ class StringeeWrapper {
     });
     if (isAllGranted) {
       isPermissionGranted = true;
+      // if (StringeeCallManager().calls.isNotEmpty) {
+      //   _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
+      //     create: (_) => result.success,
+      //     child: const StringeeCallWidget(),
+      //   ));
+      // }
     }
     return isAllGranted;
   }

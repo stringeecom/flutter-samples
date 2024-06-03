@@ -29,7 +29,6 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
 }
 
 bool _initialized = false;
-var accessToken = 'PUT_YOUR_TOKEN_HERE';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +46,7 @@ void main() async {
   final userId = prefs.getString('userId') ?? '';
   if (userId.isNotEmpty) {
     debugPrint('Connect with userId: $userId when app start');
-    accessToken = getAccessToken(userId: userId, ttl: 36000);
+    String accessToken = getAccessToken(userId: userId, ttl: 36000);
     StringeeWrapper().connect(accessToken);
   }
 
@@ -87,6 +86,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   bool connecting = false;
   bool isEnablePush = false;
   String connectStatus = 'Not connected...';
+  late SharedPreferences _prefs;
 
   TextEditingController userIdController = TextEditingController();
   String to = '';
@@ -110,21 +110,24 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
     if (!isIOS) {
       AndroidPushManager().listenNotificationSelect();
-      StringeeWrapper().requestPermissions();
     }
 
     // add listener to listen event from StringeeWrapper
     StringeeWrapper().addListener(StringeeListener(
-      onConnected: (userId) {
+      onConnected: (userId) async {
         debugPrint('Connected');
         setState(() {
           connected = true;
           connecting = false;
           connectStatus = 'Connected as $userId';
         });
+        _prefs = await SharedPreferences.getInstance();
+        bool isPushRegistered = _prefs.getBool('isPushRegistered') ?? false;
+        if (!isPushRegistered) {
+          StringeeWrapper().registerPush(isVoip: true);
+        }
       },
       onDisConnected: () {
         debugPrint('Disconnected');
@@ -137,8 +140,8 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       onRequestNewToken: () {
         // reconnect with latest token
         if (userIdController.text.isNotEmpty) {
-          debugPrint('Connect when requeset new token...');
-          accessToken =
+          debugPrint('Connect when request new token...');
+          String accessToken =
               getAccessToken(userId: userIdController.text, ttl: 36000);
           StringeeWrapper().connect(accessToken);
         }
@@ -198,53 +201,59 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       ),
       body: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Switch.adaptive(
-                value: isEnablePush,
-                onChanged: (value) async {
-                  if (!connected) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Please connect to Stringee first'),
-                      ),
-                    );
-                    return;
-                  }
-
-                  if (value) {
-                    StringeeWrapper().enablePush(isVoip: true);
-                  } else {
-                    StringeeWrapper().unregisterPush();
-                  }
-                  setState(() {
-                    isEnablePush = value;
-                  });
-                },
-              ),
-              const Text("Enable Push"),
-              const SizedBox(width: 16),
-            ],
-          ),
           Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Row(
+                Center(
+                  child: Text(
+                    connectStatus,
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: connected
+                      ? TextField(
+                          onChanged: (value) => setState(() {}),
+                          controller: userIdController,
+                          enabled: !connected,
+                          decoration: const InputDecoration(
+                              hintText: 'Enter a user ID'),
+                        )
+                      : TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Enter a callee id',
+                          ),
+                          onChanged: (value) {
+                            to = value;
+                          },
+                        ),
+                ),
+                Column(
                   children: [
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        onChanged: (value) => setState(() {}),
-                        controller: userIdController,
-                        enabled: !connected,
-                        decoration:
-                            const InputDecoration(hintText: 'Enter a user ID'),
+                    if (connected)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Switch.adaptive(
+                            value: isVideoCall,
+                            onChanged: (value) {
+                              setState(() {
+                                isVideoCall = value;
+                              });
+                            },
+                          ),
+                          const Text("Video Call")
+                        ],
                       ),
-                    ),
                     TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: connected
+                            ? Theme.of(context).colorScheme.inversePrimary
+                            : Colors.grey,
+                      ),
                       onPressed: userIdController.text.isEmpty
                           ? null
                           : () {
@@ -263,7 +272,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                                 });
                                 return;
                               }
-                              accessToken = getAccessToken(
+                              String accessToken = getAccessToken(
                                   userId: userIdController.text, ttl: 36000);
                               StringeeWrapper().connect(accessToken);
 
@@ -273,53 +282,29 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                                     'userId', userIdController.text);
                               });
                             },
-                      icon: const Icon(Icons.connect_without_contact_outlined),
+                      icon: Icon(
+                        Icons.connect_without_contact_outlined,
+                        color: connected
+                            ? Theme.of(context).colorScheme.secondary
+                            : Colors.white,
+                      ),
                       label: connecting
                           ? const SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(),
                             )
-                          : connected
-                              ? const Text('Disconnect')
-                              : const Text('Connect'),
-                    )
+                          : Text(
+                              connected ? 'Disconnect' : 'Connect',
+                              style: TextStyle(
+                                color: connected
+                                    ? Theme.of(context).colorScheme.secondary
+                                    : Colors.white,
+                              ),
+                            ),
+                    ),
                   ],
                 ),
-                Center(
-                  child: Text(
-                    connectStatus,
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                ),
-                if (connected)
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter a callee id',
-                      ),
-                      onChanged: (value) {
-                        to = value;
-                      },
-                    ),
-                  ),
-                if (connected)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Switch.adaptive(
-                        value: isVideoCall,
-                        onChanged: (value) {
-                          setState(() {
-                            isVideoCall = value;
-                          });
-                        },
-                      ),
-                      const Text("Video Call")
-                    ],
-                  ),
               ],
             ),
           )
@@ -343,11 +328,29 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             );
             return;
           }
-          StringeeWrapper().makeCall(
-            to: to,
-            isVideoCall: isVideoCall,
-            videoQuality: VideoQuality.fullHd,
-          );
+          if (!isIOS) {
+            StringeeWrapper().requestPermissions().then((value) {
+              if (!value) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Permission is not granted'),
+                  ),
+                );
+                return;
+              }
+              StringeeWrapper().makeCall(
+                to: to,
+                isVideoCall: isVideoCall,
+                videoQuality: VideoQuality.fullHd,
+              );
+            });
+          } else {
+            StringeeWrapper().makeCall(
+              to: to,
+              isVideoCall: isVideoCall,
+              videoQuality: VideoQuality.fullHd,
+            );
+          }
         },
         tooltip: 'Call',
         child: const Icon(Icons.call),

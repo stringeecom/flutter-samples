@@ -148,6 +148,7 @@ class StringeeCallManager {
       }
 
       call.signalingState = StringeeSignalingState.answered;
+      call.callState = CallState.starting;
       await call.call.answer();
       await call.call.setSpeakerphoneOn(call.isVideoCall);
     }

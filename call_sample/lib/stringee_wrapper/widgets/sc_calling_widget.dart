@@ -14,11 +14,14 @@ class SCCallingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(flex: 3, child: body),
-        Expanded(flex: 1, child: bottom)
-      ],
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          Expanded(flex: 3, child: body),
+          Expanded(flex: 1, child: bottom)
+        ],
+      ),
     );
   }
 }
