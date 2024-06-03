@@ -214,7 +214,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: !connected
-                      ? TextField(
+                      ? TextFormField(
                           onChanged: (value) => setState(() {}),
                           controller: userIdController,
                           enabled: !connected,
@@ -225,6 +225,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                           decoration: const InputDecoration(
                             hintText: 'Enter a callee id',
                           ),
+                          controller: null,
                           onChanged: (value) {
                             to = value;
                           },
@@ -254,34 +255,34 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                             ? Theme.of(context).colorScheme.inversePrimary
                             : Colors.grey,
                       ),
-                      onPressed: userIdController.text.isEmpty
-                          ? null
-                          : () {
-                              // connect to stringee with token using StringeeWrapper
-                              if (connecting) {
-                                return;
-                              }
-                              setState(() {
-                                connecting = true;
-                              });
-                              if (connected) {
-                                StringeeWrapper().disconnect();
-                                // clear userId in SharedPreferences
-                                SharedPreferences.getInstance().then((prefs) {
-                                  prefs.remove('userId');
-                                });
-                                return;
-                              }
-                              String accessToken = getAccessToken(
-                                  userId: userIdController.text, ttl: 36000);
-                              StringeeWrapper().connect(accessToken);
+                      onPressed: () {
+                        if (userIdController.text.isEmpty) {
+                          return;
+                        }
+                        // connect to stringee with token using StringeeWrapper
+                        if (connecting) {
+                          return;
+                        }
+                        setState(() {
+                          connecting = true;
+                        });
+                        if (connected) {
+                          StringeeWrapper().disconnect();
+                          // clear userId in SharedPreferences
+                          SharedPreferences.getInstance().then((prefs) {
+                            prefs.remove('userId');
+                          });
+                          return;
+                        }
+                        String accessToken = getAccessToken(
+                            userId: userIdController.text, ttl: 36000);
+                        StringeeWrapper().connect(accessToken);
 
-                              // save userId to SharedPreferences
-                              SharedPreferences.getInstance().then((prefs) {
-                                prefs.setString(
-                                    'userId', userIdController.text);
-                              });
-                            },
+                        // save userId to SharedPreferences
+                        SharedPreferences.getInstance().then((prefs) {
+                          prefs.setString('userId', userIdController.text);
+                        });
+                      },
                       icon: Icon(
                         Icons.connect_without_contact_outlined,
                         color: connected
