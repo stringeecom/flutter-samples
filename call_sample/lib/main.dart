@@ -213,7 +213,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                 ),
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: connected
+                  child: !connected
                       ? TextField(
                           onChanged: (value) => setState(() {}),
                           controller: userIdController,
@@ -310,51 +310,53 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           )
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (!connected) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please connect to Stringee first'),
-              ),
-            );
-            return;
-          }
-          if (to.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Please enter a callee id'),
-              ),
-            );
-            return;
-          }
-          if (!isIOS) {
-            StringeeWrapper().requestPermissions().then((value) {
-              if (!value) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Permission is not granted'),
-                  ),
-                );
-                return;
-              }
-              StringeeWrapper().makeCall(
-                to: to,
-                isVideoCall: isVideoCall,
-                videoQuality: VideoQuality.fullHd,
-              );
-            });
-          } else {
-            StringeeWrapper().makeCall(
-              to: to,
-              isVideoCall: isVideoCall,
-              videoQuality: VideoQuality.fullHd,
-            );
-          }
-        },
-        tooltip: 'Call',
-        child: const Icon(Icons.call),
-      ),
+      floatingActionButton: connected
+          ? FloatingActionButton(
+              onPressed: () {
+                if (!connected) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please connect to Stringee first'),
+                    ),
+                  );
+                  return;
+                }
+                if (to.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a callee id'),
+                    ),
+                  );
+                  return;
+                }
+                if (!isIOS) {
+                  StringeeWrapper().requestPermissions().then((value) {
+                    if (!value) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Permission is not granted'),
+                        ),
+                      );
+                      return;
+                    }
+                    StringeeWrapper().makeCall(
+                      to: to,
+                      isVideoCall: isVideoCall,
+                      videoQuality: VideoQuality.fullHd,
+                    );
+                  });
+                } else {
+                  StringeeWrapper().makeCall(
+                    to: to,
+                    isVideoCall: isVideoCall,
+                    videoQuality: VideoQuality.fullHd,
+                  );
+                }
+              },
+              tooltip: 'Call',
+              child: const Icon(Icons.call),
+            )
+          : null,
     );
   }
 }
