@@ -237,14 +237,15 @@ class StringeeCallModel extends ChangeNotifier {
     if (state != StringeeSignalingState.ended ||
         state != StringeeSignalingState.ringing) {
       if (isIOS) {
-        CallkeepManager().reportEndCallIfNeeded(stringeeCallModel: this);
-      } else {
-        StringeeWrapper()
-            .stringeeListener
-            ?.onDismissCallWidget
-            .call('Call is handle from another device');
-        // TODO: - handle handleOnAnotherDevice on android if needed
+        // report end call if needed
+        // reason -1000: handleOnAnotherDevice, do not need end stringee call
+        CallkeepManager()
+            .reportEndCallIfNeeded(stringeeCallModel: this, reason: -1000);
       }
+      StringeeWrapper()
+          .stringeeListener
+          ?.onDismissCallWidget
+          .call('Call is handle from another device');
     }
   }
 

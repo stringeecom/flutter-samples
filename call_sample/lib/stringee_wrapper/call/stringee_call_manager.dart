@@ -131,7 +131,22 @@ class StringeeCallManager {
   Future<void> answerStringeeCall(StringeeCallModel call) async {
     /// check if the call is incoming and the audio is active
     if (call.isIncomingCall) {
-      debugPrint('Answer call with audio ${CallkeepManager().isActiveAudio}');
+      if (isIOS) {
+        // in iOS, we need to check if the audio is active
+        // if the audio is active, we can answer the call
+        Timer.periodic(const Duration(milliseconds: 100), (timer) {
+          debugPrint(
+              'Answer call with audio ${CallkeepManager().isActiveAudio}');
+          if (CallkeepManager().isActiveAudio) {
+            timer.cancel();
+            call.signalingState = StringeeSignalingState.answered;
+            call.call.answer();
+            call.call.setSpeakerphoneOn(call.isVideoCall);
+          }
+        });
+        return;
+      }
+
       call.signalingState = StringeeSignalingState.answered;
       await call.call.answer();
       await call.call.setSpeakerphoneOn(call.isVideoCall);

@@ -134,8 +134,11 @@ class CallkeepManager {
       await callkeep.endCall(stringeeCallModel.uuid);
     } else {
       await callkeep.reportEndCallWithUUID(stringeeCallModel.uuid, reason);
-      // after report, end stringee call
-      _endCall(stringeeCallModel.uuid);
+      // reason -1000: handleOnAnotherDevice, do not need end stringee call
+      if (reason != -1000) {
+        // after report, end stringee call
+        _endCall(stringeeCallModel.uuid);
+      }
     }
     _currentCallKit = CallKitModel();
     return Result.success(

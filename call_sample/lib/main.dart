@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'environment_config.dart';
 import 'firebase_options.dart';
 import 'stringee_wrapper/common/common.dart';
 import 'stringee_wrapper/push_manager/android_push_manager.dart';
@@ -27,7 +29,7 @@ Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
 }
 
 bool _initialized = false;
-const accessToken = 'PUT_YOUR_TOKEN_HERE';
+var accessToken = 'PUT_YOUR_TOKEN_HERE';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +43,14 @@ void main() async {
     FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
   }
   // connect when app start
-  StringeeWrapper().connect(accessToken);
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString('userId') ?? '';
+  if (userId.isNotEmpty) {
+    debugPrint('Connect with userId: $userId when app start');
+    accessToken = getAccessToken(userId: userId, ttl: 36000);
+    StringeeWrapper().connect(accessToken);
+  }
+
   runApp(const MyApp());
 }
 
@@ -79,6 +88,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   bool isEnablePush = false;
   String connectStatus = 'Not connected...';
 
+  TextEditingController userIdController = TextEditingController();
   String to = '';
 
   @override
@@ -126,7 +136,13 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       },
       onRequestNewToken: () {
         // reconnect with latest token
-        StringeeWrapper().connect(accessToken);
+        if (userIdController.text.isNotEmpty) {
+          debugPrint('Connect when requeset new token...');
+          accessToken =
+              getAccessToken(userId: userIdController.text, ttl: 36000);
+          StringeeWrapper().connect(accessToken);
+        }
+
         setState(() {
           connectStatus = 'Request new token';
         });
@@ -161,6 +177,14 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     setState(() {
       connected = StringeeWrapper().connected;
     });
+
+    // get userId from SharedPreferences
+    SharedPreferences.getInstance().then((prefs) {
+      final userId = prefs.getString('userId') ?? '';
+      if (userId.isNotEmpty) {
+        userIdController.text = userId;
+      }
+    });
   }
 
   @override
@@ -171,32 +195,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
             ? Theme.of(context).colorScheme.inversePrimary
             : Colors.grey,
         title: Text(widget.title),
-        actions: [
-          TextButton.icon(
-            onPressed: () {
-              // connect to stringee with token using StringeeWrapper
-              if (connecting) {
-                return;
-              }
-              connected
-                  ? StringeeWrapper().disconnect()
-                  : StringeeWrapper().connect(accessToken);
-              setState(() {
-                connecting = true;
-              });
-            },
-            icon: const Icon(Icons.connect_without_contact_outlined),
-            label: connecting
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(),
-                  )
-                : connected
-                    ? const Text('Disconnect')
-                    : const Text('Connect'),
-          )
-        ],
       ),
       body: Stack(
         children: [
@@ -232,40 +230,96 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           ),
           Center(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: <Widget>[
+                Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        onChanged: (value) => setState(() {}),
+                        controller: userIdController,
+                        enabled: !connected,
+                        decoration:
+                            const InputDecoration(hintText: 'Enter a user ID'),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: userIdController.text.isEmpty
+                          ? null
+                          : () {
+                              // connect to stringee with token using StringeeWrapper
+                              if (connecting) {
+                                return;
+                              }
+                              setState(() {
+                                connecting = true;
+                              });
+                              if (connected) {
+                                StringeeWrapper().disconnect();
+                                // clear userId in SharedPreferences
+                                SharedPreferences.getInstance().then((prefs) {
+                                  prefs.remove('userId');
+                                });
+                                return;
+                              }
+                              accessToken = getAccessToken(
+                                  userId: userIdController.text, ttl: 36000);
+                              StringeeWrapper().connect(accessToken);
+
+                              // save userId to SharedPreferences
+                              SharedPreferences.getInstance().then((prefs) {
+                                prefs.setString(
+                                    'userId', userIdController.text);
+                              });
+                            },
+                      icon: const Icon(Icons.connect_without_contact_outlined),
+                      label: connecting
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(),
+                            )
+                          : connected
+                              ? const Text('Disconnect')
+                              : const Text('Connect'),
+                    )
+                  ],
+                ),
                 Center(
                   child: Text(
                     connectStatus,
                     style: const TextStyle(fontSize: 20),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: TextField(
-                    decoration: const InputDecoration(
-                      hintText: 'Enter a callee id',
-                    ),
-                    onChanged: (value) {
-                      to = value;
-                    },
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Switch.adaptive(
-                      value: isVideoCall,
+                if (connected)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Enter a callee id',
+                      ),
                       onChanged: (value) {
-                        setState(() {
-                          isVideoCall = value;
-                        });
+                        to = value;
                       },
                     ),
-                    const Text("Video Call")
-                  ],
-                ),
+                  ),
+                if (connected)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Switch.adaptive(
+                        value: isVideoCall,
+                        onChanged: (value) {
+                          setState(() {
+                            isVideoCall = value;
+                          });
+                        },
+                      ),
+                      const Text("Video Call")
+                    ],
+                  ),
               ],
             ),
           )

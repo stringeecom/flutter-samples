@@ -33,6 +33,11 @@ dependencies:
   permission_handler: ^11.3.1
   device_info_plus: ^10.1.0
 
+  # for jwt
+  dart_jsonwebtoken: ^2.14.0
+  # for shared preferences
+  shared_preferences: ^2.2.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

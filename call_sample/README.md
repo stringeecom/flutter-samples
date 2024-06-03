@@ -1,4 +1,11 @@
-# StringeeWrapper Class Documentation
+# Call Sample Flutter
+
+## Get Started
+
+1. Get API_SID_KEY, API_SECRET_KEY of project from Console Stringee and create `config.json` like config.sample.json. And run flutter project with `--dart-define-from-file=config.json`
+2. Configure [PUSH](#configure-push) to receive call when app not foreground if needed.
+
+## StringeeWrapper Class Documentation
 
 The `StringeeWrapper` class serves as a singleton interface to interact with the Stringee API for handling voice and video calls. This documentation provides an overview of its properties, methods, and usage.
 
@@ -172,11 +179,11 @@ To receive incoming calls when app on background/terminated, you have to enable 
 
 ***iOS: ONLY WORKING ON REAL DEVICE, not on simulator(Callkit framework not working on simulator)***
 
-<!-- ### Configure push
+### Configure push
 
-1. Configure on Stringee developer. Follow steps in [Push Notification](https://developer.stringee.com/docs/push-notification/flutter)
+Follow steps in [Push Notification](https://developer.stringee.com/docs/push-notification/flutter). Some steps can be skipped if not necessary or already implemented
 
-2. Configure on your project
+<!-- 2. Configure on your project
 
     - iOS
         - Info.plist
