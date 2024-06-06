@@ -120,7 +120,7 @@ class StringeeCallManager {
         Timer.periodic(const Duration(milliseconds: 100), (timer) {
           debugPrint(
               'Answer call with audio ${CallkeepManager().isActiveAudio}');
-          if (CallkeepManager().isActiveAudio) {
+          if (CallkeepManager().isActiveAudio && StringeeWrapper().connected) {
             timer.cancel();
             call.signalingState = StringeeSignalingState.answered;
             call.call.answer();

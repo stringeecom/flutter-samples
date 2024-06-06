@@ -27,14 +27,21 @@ class StringeeCallModel extends ChangeNotifier {
     _signalingState = value;
   }
 
+  StreamSubscription<dynamic>? _callEventSubscription;
+
+  // video track if
+  StringeeVideoTrack? _localVideoTrack;
+  StringeeVideoTrack? get localVideoTrack => _localVideoTrack;
+  StringeeVideoTrack? _remoteVideoTrack;
+  StringeeVideoTrack? get remoteVideoTrack => _remoteVideoTrack;
+
   bool _isMute = false;
-
   bool get isMute => _isMute;
+
   bool _isVideoEnable = true;
-
   bool get isVideoEnable => _isVideoEnable;
-  bool _isSpeaker = false;
 
+  bool _isSpeaker = false;
   bool get isSpeaker => _isSpeaker;
 
   String _uuid = '';
@@ -93,7 +100,7 @@ class StringeeCallModel extends ChangeNotifier {
     this.customData,
     this.videoQuality,
   }) {
-    call.eventStreamController.stream.listen((event) {
+    _callEventSubscription = call.eventStreamController.stream.listen((event) {
       debugPrint('$uuid StringeeCallModel ${call.callId} - event: $event');
       _handleStringeeCallEvent(event as Map<dynamic, dynamic>);
     });
@@ -213,6 +220,8 @@ class StringeeCallModel extends ChangeNotifier {
     debugPrint('_handleMediaStateChangeEvent $state');
     _mediaState = state;
     if (_mediaState == StringeeMediaState.connected) {
+      // set speaker if needed
+      _setSpeaker(call.isVideoCall);
       _callTimeOutTimer?.cancel();
       if (_signalingState == StringeeSignalingState.answered) {
         startTimerIfNeeded();
@@ -265,10 +274,24 @@ class StringeeCallModel extends ChangeNotifier {
   }
 
   /// Invoked when add new video track to call in video call
-  void _handleAddVideoTrackEvent(StringeeVideoTrack track) {}
+  void _handleAddVideoTrackEvent(StringeeVideoTrack track) {
+    if (track.isLocal) {
+      _localVideoTrack = track;
+    } else {
+      _remoteVideoTrack = track;
+    }
+    notifyListeners();
+  }
 
   /// Invoked when remove video in call in video call
-  void _handleRemoveVideoTrackEvent(StringeeVideoTrack track) {}
+  void _handleRemoveVideoTrackEvent(StringeeVideoTrack track) {
+    if (track.isLocal) {
+      _localVideoTrack = null;
+    } else {
+      _remoteVideoTrack = null;
+    }
+    notifyListeners();
+  }
 
   /// Invoked when change Audio device in android
   void _handleChangeAudioDeviceEvent(
@@ -348,9 +371,13 @@ class StringeeCallModel extends ChangeNotifier {
   }
 
   Future<Result> changeSpeaker() async {
-    final result = await call.setSpeakerphoneOn(!_isSpeaker);
+    return _setSpeaker(!_isSpeaker);
+  }
+
+  Future<Result> _setSpeaker(bool isSpeaker) async {
+    final result = await call.setSpeakerphoneOn(isSpeaker);
     if (result['status']) {
-      _isSpeaker = !_isSpeaker;
+      _isSpeaker = isSpeaker;
       notifyListeners();
       return Result.success(result);
     } else {
@@ -411,5 +438,12 @@ class StringeeCallModel extends ChangeNotifier {
     } else {
       return Result.failure('Error while mute');
     }
+  }
+
+  @override
+  void dispose() {
+    _callEventSubscription?.cancel();
+    debugPrint('dispose StringeeCallModel $uuid ${call.callId}');
+    super.dispose();
   }
 }

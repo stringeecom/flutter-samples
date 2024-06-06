@@ -138,6 +138,15 @@ class StringeeIncallWidget extends StatelessWidget {
   }
 
   Widget _localView(BuildContext context, StringeeCallModel model) {
+    if (model.localVideoTrack != null) {
+      return model.localVideoTrack!.attach(
+        isMirror: true,
+        height: 150.0,
+        width: 110.0,
+        scalingType: ScalingType.fit,
+        // borderRadius: BorderRadius.circular(8),
+      );
+    }
     return model.readyLocalView
         ? StringeeVideoView(
             model.call.callId,
@@ -153,6 +162,12 @@ class StringeeIncallWidget extends StatelessWidget {
   }
 
   Widget _remoteView(BuildContext context, StringeeCallModel model) {
+    if (model.remoteVideoTrack != null) {
+      return model.remoteVideoTrack!.attach(
+        isMirror: false,
+        scalingType: ScalingType.fit,
+      );
+    }
     return model.readyRemoteView
         ? StringeeVideoView(
             model.call.callId,
@@ -160,7 +175,7 @@ class StringeeIncallWidget extends StatelessWidget {
             isMirror: false,
             scalingType: ScalingType.fit,
           )
-        : const Placeholder(color: Colors.black );
+        : const Placeholder(color: Colors.black);
   }
 
   Widget _btnMic(StringeeCallModel model) {
