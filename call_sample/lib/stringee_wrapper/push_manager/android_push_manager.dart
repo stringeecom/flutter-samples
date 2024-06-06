@@ -88,7 +88,7 @@ class AndroidPushManager {
     /// Show notification
     await flutterLocalNotificationsPlugin.show(
       notificationId,
-      'Incoming Call from $fromAlias}',
+      'Incoming Call from $fromAlias',
       from,
       platformChannelSpecifics,
     );
