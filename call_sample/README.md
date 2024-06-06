@@ -2,7 +2,7 @@
 
 ## Get Started
 
-1. Get API_SID_KEY, API_SECRET_KEY of project from Console Stringee and create `config.json` like config.sample.json. And run flutter project with `--dart-define-from-file=config.json`
+1. Get API_SID_KEY, API_SECRET_KEY of project from Console Stringee and create `config.json` like config.sample.json. And run flutter project with `flutter run --dart-define-from-file=config.json`
 2. Configure [PUSH](#configure-push) to receive call when app not foreground if needed.
 
 ## StringeeWrapper Class Documentation
