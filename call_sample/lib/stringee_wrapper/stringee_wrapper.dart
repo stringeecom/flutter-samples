@@ -118,6 +118,7 @@ class StringeeWrapper {
 
   /// disconnect from Stringee server
   Future<void> disconnect() async {
+    await unregisterPush();
     _stringeeClient.disconnect();
   }
 
@@ -212,7 +213,7 @@ class StringeeWrapper {
     }
   }
 
-  Future<bool> requestPermissions() async {
+  Future<bool> requestCallPermissions() async {
     DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
     AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
     List<Permission> permissions = [
@@ -222,10 +223,22 @@ class StringeeWrapper {
     if (androidInfo.version.sdkInt >= 31) {
       permissions.add(Permission.bluetoothConnect);
     }
-    if (androidInfo.version.sdkInt >= 33) {
-      permissions.add(Permission.notification);
-    }
+    return _requestPermission(permissions);
+  }
 
+  Future<bool> requestNotificationPermissions() async {
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+    if (androidInfo.version.sdkInt >= 33) {
+      List<Permission> permissions = [
+        Permission.notification,
+      ];
+      return _requestPermission(permissions);
+    }
+    return true;
+  }
+
+  Future<bool> _requestPermission(List<Permission> permissions) async {
     Map<Permission, PermissionStatus> permissionsStatus =
         await permissions.request();
     debugPrint('Permission statuses - $permissionsStatus');
@@ -235,15 +248,6 @@ class StringeeWrapper {
         isAllGranted = false;
       }
     });
-    if (isAllGranted) {
-      isPermissionGranted = true;
-      // if (StringeeCallManager().calls.isNotEmpty) {
-      //   _stringeeListener?.onPresentCallWidget.call(ChangeNotifierProvider(
-      //     create: (_) => result.success,
-      //     child: const StringeeCallWidget(),
-      //   ));
-      // }
-    }
     return isAllGranted;
   }
 }

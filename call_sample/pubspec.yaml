@@ -37,6 +37,7 @@ dependencies:
   dart_jsonwebtoken: ^2.14.0
   # for shared preferences
   shared_preferences: ^2.2.3
+  fluttertoast: ^8.2.6
 
 dev_dependencies:
   flutter_test:

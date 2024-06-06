@@ -25,7 +25,7 @@ class AndroidPushManager {
   }
 
   String? pushToken = '';
-  int notificationId = 123456;
+  int notificationId = 280196;
   String channelId = 'channel_id';
   String channelName = 'Channel name';
   String channelDescription = 'Channel description';
@@ -98,7 +98,7 @@ class AndroidPushManager {
     flutterLocalNotificationsPlugin.cancel(notificationId);
   }
 
-  void handleNotificationAction() async {
+  Future<void> handleNotificationAction() async {
     final NotificationAppLaunchDetails? notificationAppLaunchDetails =
         await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
 
@@ -164,11 +164,10 @@ class AndroidPushManager {
     selectNotificationStream.stream.listen((String? action) async {
       debugPrint('selectNotificationStream: action - $action');
       if (StringeeCallManager().calls.isNotEmpty) {
-        final call = StringeeCallManager().calls[0];
         if (action == actionRejectFromNotification) {
-          StringeeCallManager().endStringeeCall(call);
+          isRejectFromPush = true;
         } else if (action == actionAnswerFromNotification) {
-          StringeeCallManager().answerStringeeCall(call);
+          isAnswerFromPush = true;
         }
       }
     });

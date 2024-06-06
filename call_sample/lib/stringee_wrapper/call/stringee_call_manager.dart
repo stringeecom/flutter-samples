@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
 
 import '../interfaces/stringee_call_interface.dart';
-import '../push_manager/android_push_manager.dart';
 import '../push_manager/callkeep_manager.dart';
 import 'stringee_call_model.dart';
 
@@ -63,31 +62,12 @@ class StringeeCallManager {
       return Result.failure('There is an active call');
     }
 
-    if (!isIOS) {
-      _calls.add(stringeeCallModel);
-    }
-
     final initializedCallResult = await stringeeCallModel.call.initAnswer();
-
     if (initializedCallResult['status']) {
+      _calls.add(stringeeCallModel);
       if (isIOS) {
-        _calls.add(stringeeCallModel);
         // add the call to the list
         CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
-      } else {
-        bool isPermissionGranted = await StringeeWrapper().requestPermissions();
-        if (isPermissionGranted) {
-          if (AndroidPushManager().isRejectFromPush) {
-            stringeeCallModel.rejectCall();
-            AndroidPushManager().isRejectFromPush = false;
-          } else if (AndroidPushManager().isAnswerFromPush) {
-            stringeeCallModel.answerCall();
-            AndroidPushManager().isAnswerFromPush = false;
-          }
-        } else {
-          stringeeCallModel.rejectCall();
-          return Result.failure('Permission is not granted');
-        }
       }
       return Result.success(stringeeCallModel);
     } else {
@@ -109,9 +89,6 @@ class StringeeCallManager {
     if (call == null && call2 == null) {
       return Result.failure('Call cannot be null');
     }
-    if (!isPermissionGranted && !isIOS) {
-      return Result.failure('Permission not granted');
-    }
     // create a call model
     StringeeCallModel stringeeCallModel = StringeeCallModel(
       call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
@@ -122,10 +99,16 @@ class StringeeCallManager {
       videoQuality: videoQuality,
     );
     _calls.add(stringeeCallModel);
-    await stringeeCallModel.makeCall();
-    await stringeeCallModel.call
-        .setSpeakerphoneOn(stringeeCallModel.isVideoCall);
     return Result.success(stringeeCallModel);
+  }
+
+  Future<Result> makeCall(StringeeCallModel stringeeCallModel) async {
+    Result result = await stringeeCallModel.makeCall();
+    if (result.isSuccess) {
+      await stringeeCallModel.call
+          .setSpeakerphoneOn(stringeeCallModel.isVideoCall);
+    }
+    return result;
   }
 
   Future<void> answerStringeeCall(StringeeCallModel call) async {

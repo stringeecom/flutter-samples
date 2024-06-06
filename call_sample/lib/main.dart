@@ -33,7 +33,7 @@ bool _initialized = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (!isIOS) {
-    AndroidPushManager().handleNotificationAction();
+    await AndroidPushManager().handleNotificationAction();
     if (!_initialized) {
       await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform);
@@ -94,7 +94,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint("didChangeAppLifecycle - $state");
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !isIOS) {
       AndroidPushManager().cancelIncomingCallNotification();
     }
   }
@@ -112,6 +112,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     if (!isIOS) {
       AndroidPushManager().listenNotificationSelect();
+      StringeeWrapper().requestNotificationPermissions();
     }
 
     // add listener to listen event from StringeeWrapper
@@ -330,29 +331,11 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   );
                   return;
                 }
-                if (!isIOS) {
-                  StringeeWrapper().requestPermissions().then((value) {
-                    if (!value) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Permission is not granted'),
-                        ),
-                      );
-                      return;
-                    }
-                    StringeeWrapper().makeCall(
-                      to: to,
-                      isVideoCall: isVideoCall,
-                      videoQuality: VideoQuality.fullHd,
-                    );
-                  });
-                } else {
-                  StringeeWrapper().makeCall(
-                    to: to,
-                    isVideoCall: isVideoCall,
-                    videoQuality: VideoQuality.fullHd,
-                  );
-                }
+                StringeeWrapper().makeCall(
+                  to: to,
+                  isVideoCall: isVideoCall,
+                  videoQuality: VideoQuality.fullHd,
+                );
               },
               tooltip: 'Call',
               child: const Icon(Icons.call),
