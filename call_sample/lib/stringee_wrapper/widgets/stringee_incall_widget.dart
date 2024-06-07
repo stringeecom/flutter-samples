@@ -117,6 +117,26 @@ class StringeeIncallWidget extends StatelessWidget {
           top: 64,
           child: _localView(context, model),
         ),
+        Positioned(
+          top: 64,
+          left: 16,
+          child: Container(
+            height: 30.0,
+            width: 55.0,
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(64, 182, 73, 1.0),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              model.time,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.0,
+              ),
+            ),
+          ),
+        ),
 
         // Call actions
         Positioned(
