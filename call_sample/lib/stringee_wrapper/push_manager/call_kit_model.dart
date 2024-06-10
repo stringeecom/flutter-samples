@@ -43,8 +43,9 @@ class CallKitModel {
   _startCountTimeout() {
     _timer?.cancel();
     _timer = Timer(Duration(seconds: timeout), () {
-      if (uuid != null) {
+      if (uuid != null && callModel == null) {
         CallkeepManager().callkeep.endCall(uuid!);
+        CallkeepManager().removeCallKitModel(uuid!);
       }
     });
   }

@@ -306,4 +306,10 @@ class CallkeepManager {
       }
     }
   }
+
+  removeCallKitModel(String uuid) {
+    if (_currentCallKit.uuid == uuid) {
+      _currentCallKit = CallKitModel();
+    }
+  }
 }
