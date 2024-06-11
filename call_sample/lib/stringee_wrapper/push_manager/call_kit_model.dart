@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
+
 import '../call/stringee_call_model.dart';
 import 'callkeep_manager.dart';
 
@@ -33,6 +35,21 @@ class CallKitModel {
     if (callModel == null && uuid != null) {
       _startCountTimeout();
     }
+
+    if (callId != null && uuid != null && callModel == null) {
+      // check call exist in stringee server then end call if not exist
+      _checkCallExist();
+    }
+  }
+
+  _checkCallExist() async {
+    if (callId != null) {
+      final result = await StringeeWrapper().stringeeClient.existCall(callId!);
+      if (!result['status']) {
+        _endCallKit();
+        return;
+      }
+    }
   }
 
   Timer? _timer;
@@ -44,13 +61,20 @@ class CallKitModel {
     _timer?.cancel();
     _timer = Timer(Duration(seconds: timeout), () {
       if (uuid != null && callModel == null) {
-        CallkeepManager().callkeep.endCall(uuid!);
-        CallkeepManager().removeCallKitModel(uuid!);
+        _endCallKit();
       }
     });
   }
 
   stopCountTimeout() {
     _timer?.cancel();
+  }
+
+  _endCallKit() {
+    if (uuid != null) {
+      _timer?.cancel();
+      CallkeepManager().callkeep.endCall(uuid!);
+      CallkeepManager().removeCallKitModel(uuid!);
+    }
   }
 }
