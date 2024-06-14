@@ -62,16 +62,21 @@ class StringeeCallManager {
       return Result.failure('There is an active call');
     }
 
-    final initializedCallResult = await stringeeCallModel.call.initAnswer();
-    if (initializedCallResult['status']) {
+    if (isIOS) {
+      // add the call to the list
       _calls.add(stringeeCallModel);
-      if (isIOS) {
-        // add the call to the list
-        CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
-      }
+      // report incoming call if needed
+      CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
+      // iOS will call initAnswer when audio session is active
       return Result.success(stringeeCallModel);
     } else {
-      return Result.failure('Error while handle Incoming call');
+      final initializedCallResult = await stringeeCallModel.call.initAnswer();
+      if (initializedCallResult['status']) {
+        _calls.add(stringeeCallModel);
+        return Result.success(stringeeCallModel);
+      } else {
+        return Result.failure('Error while handle Incoming call');
+      }
     }
   }
 
@@ -117,14 +122,15 @@ class StringeeCallManager {
       if (isIOS) {
         // in iOS, we need to check if the audio is active
         // if the audio is active, we can answer the call
-        Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        Timer.periodic(const Duration(milliseconds: 100), (timer) async {
           debugPrint(
               'Answer call with audio ${CallkeepManager().isActiveAudio}');
           if (CallkeepManager().isActiveAudio && StringeeWrapper().connected) {
             timer.cancel();
+            await call.call.initAnswer();
             call.signalingState = StringeeSignalingState.answered;
-            call.call.answer();
-            call.call.setSpeakerphoneOn(call.isVideoCall);
+            await call.call.answer();
+            await call.call.setSpeakerphoneOn(call.isVideoCall);
           }
         });
         return;

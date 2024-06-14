@@ -236,7 +236,7 @@ class CallkeepManager {
               StringeeCallManager().callWithUuid(_currentCallKit.uuid!);
           if (call != null && call.call.callId == event.callId) {
             debugPrint(
-                'CallKeepPushKitReceivedNotification currentUuid: ${_currentCallKit.uuid} end call ${event.uuid}');
+                'CallKeepDidDisplayIncomingCall currentUuid: ${_currentCallKit.uuid} end call ${event.uuid}');
             callkeep.endCall(event.uuid!);
           }
         }
