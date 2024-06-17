@@ -38,7 +38,7 @@ class CallKitModel {
 
     if (callId != null && uuid != null && callModel == null) {
       // check call exist in stringee server then end call if not exist
-      _checkCallExist();
+      // _checkCallExist();
     }
   }
 
