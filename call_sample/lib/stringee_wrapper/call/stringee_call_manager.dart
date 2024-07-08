@@ -144,12 +144,13 @@ class StringeeCallManager {
   }
 
   Future<void> endStringeeCall(StringeeCallModel call) async {
-    if (call.isShouldReject) {
-      await call.call.reject();
-    } else {
-      await call.call.hangup();
+    if (call.callState != CallState.ended) {
+      if (call.isShouldReject) {
+        await call.call.reject();
+      } else {
+        await call.call.hangup();
+      }
     }
-    _calls.remove(call);
 
     StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
   }
