@@ -151,6 +151,7 @@ class StringeeCallManager {
         await call.call.hangup();
       }
     }
+    _calls.remove(call);
 
     StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
   }
