@@ -63,7 +63,7 @@ class CallkeepManager {
   Future<Result> reportIncomingCallIfNeeded(
       StringeeCallModel stringeeCallModel) async {
     debugPrint(
-        'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from}');
+        'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from} hasVideo: ${stringeeCallModel.call.isVideoCall}');
     if (_currentCallKit.uuid == null) {
       final uuid = const Uuid().v4();
       stringeeCallModel.setUuid(uuid);

@@ -2,7 +2,7 @@ import 'package:call_sample/stringee_wrapper/widgets/sc_calling_widget.dart';
 import 'package:call_sample/stringee_wrapper/widgets/stringee_avatar_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
 
 import '../call/stringee_call_model.dart';
 import 'call_action_widget.dart';

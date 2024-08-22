@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
 
 abstract class StringeeCallInterface {
   String? get callId;

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
 import 'package:flutter/material.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
 
 import '../common/common.dart';
 import '../interfaces/stringee_call_interface.dart';

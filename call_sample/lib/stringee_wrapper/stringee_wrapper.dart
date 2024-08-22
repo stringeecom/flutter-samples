@@ -8,14 +8,13 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
 
 import 'common/common.dart';
 import 'push_manager/callkeep_manager.dart';
 import 'stringee_listener.dart';
 
-export 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart'
-    show VideoQuality;
+export 'package:stringee_plugin/stringee_plugin.dart' show VideoQuality;
 
 export 'stringee_listener.dart';
 

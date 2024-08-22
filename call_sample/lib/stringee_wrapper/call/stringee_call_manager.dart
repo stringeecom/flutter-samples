@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:call_sample/stringee_wrapper/common/common.dart';
 import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
 import 'package:flutter/foundation.dart';
-import 'package:stringee_flutter_plugin/stringee_flutter_plugin.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
 
 import '../interfaces/stringee_call_interface.dart';
 import '../push_manager/callkeep_manager.dart';
