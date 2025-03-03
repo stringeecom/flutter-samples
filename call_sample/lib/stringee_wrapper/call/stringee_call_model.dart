@@ -303,10 +303,10 @@ class StringeeCallModel extends ChangeNotifier {
   /// Make call
   /// required [from] and [to]
   /// optional [customData] and [videoQuality]
-  /// return [Result]
-  Future<Result> makeCall() async {
+  /// return [Response]
+  Future<Response> makeCall() async {
     if (from == null || to == null) {
-      return Result.failure('from or to cannot be null');
+      return Response.failure('from or to cannot be null');
     }
     MakeCallParams params = MakeCallParams(
       from!,
@@ -317,31 +317,31 @@ class StringeeCallModel extends ChangeNotifier {
       videoQuality: videoQuality,
     );
 
-    final result = await call.makeCallFromParams(params);
-    if (result['status']) {
+    final response = await call.makeCallFromParams(params);
+    if (response['status']) {
       if (isIOS) {
         CallkeepManager().reportOutgoingCallIfNeeded(this);
       }
-      return Result.success(result);
+      return Response.success(response);
     } else {
-      return Result.failure('Error while making call');
+      return Response.failure('Error while making call');
     }
   }
 
   /// Call actions
-  Future<Result> answerCall() async {
+  Future<Response> answerCall() async {
     return _answerCall();
   }
 
-  Future<Result> hangupCall() async {
+  Future<Response> hangupCall() async {
     return _endCall();
   }
 
-  Future<Result> rejectCall() async {
+  Future<Response> rejectCall() async {
     return _endCall();
   }
 
-  Future<Result> muteCall() async {
+  Future<Response> muteCall() async {
     if (isIOS) {
       return CallkeepManager()
           .reportMuteCallIfNeeded(stringeeCallModel: this, muted: !_isMute);
@@ -350,42 +350,42 @@ class StringeeCallModel extends ChangeNotifier {
     }
   }
 
-  Future<Result> switchCamera() async {
-    final result = await call.switchCamera();
-    if (result['status']) {
-      return Result.success(result);
+  Future<Response> switchCamera() async {
+    final response = await call.switchCamera();
+    if (response['status']) {
+      return Response.success(response);
     } else {
-      return Result.failure('Error while enableVideo');
+      return Response.failure('Error while enableVideo');
     }
   }
 
-  Future<Result> enableVideo() async {
-    final result = await call.enableVideo(!_isVideoEnable);
-    if (result['status']) {
+  Future<Response> enableVideo() async {
+    final response = await call.enableVideo(!_isVideoEnable);
+    if (response['status']) {
       _isVideoEnable = !_isVideoEnable;
       notifyListeners();
-      return Result.success(result);
+      return Response.success(response);
     } else {
-      return Result.failure('Error while enableVideo');
+      return Response.failure('Error while enableVideo');
     }
   }
 
-  Future<Result> changeSpeaker() async {
+  Future<Response> changeSpeaker() async {
     return _setSpeaker(!_isSpeaker);
   }
 
-  Future<Result> _setSpeaker(bool isSpeaker) async {
-    final result = await call.setSpeakerphoneOn(isSpeaker);
-    if (result['status']) {
+  Future<Response> _setSpeaker(bool isSpeaker) async {
+    final response = await call.setSpeakerphoneOn(isSpeaker);
+    if (response['status']) {
       _isSpeaker = isSpeaker;
       notifyListeners();
-      return Result.success(result);
+      return Response.success(response);
     } else {
-      return Result.failure('Error while changeSpeaker');
+      return Response.failure('Error while changeSpeaker');
     }
   }
 
-  Future<Result> _endCall({int? reason}) async {
+  Future<Response> _endCall({int? reason}) async {
     _timer?.cancel();
     _startedTimer = false;
     _time = '00:00';
@@ -404,10 +404,10 @@ class StringeeCallModel extends ChangeNotifier {
       }
     }
     notifyListeners();
-    return Result.success('Call ended successfully');
+    return Response.success('Call ended successfully');
   }
 
-  Future<Result> _answerCall() async {
+  Future<Response> _answerCall() async {
     if (!_reportedAnsweredCall) {
       _reportedAnsweredCall = true;
       if (isIOS) {
@@ -417,7 +417,7 @@ class StringeeCallModel extends ChangeNotifier {
       }
     }
     notifyListeners();
-    return Result.success('Call answered already');
+    return Response.success('Call answered already');
   }
 
   startTimerIfNeeded() {
@@ -429,14 +429,14 @@ class StringeeCallModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Result> mute(bool muted) async {
-    final result = await call.mute(muted);
-    if (result['status']) {
+  Future<Response> mute(bool muted) async {
+    final response = await call.mute(muted);
+    if (response['status']) {
       _isMute = muted;
       notifyListeners();
-      return Result.success(result);
+      return Response.success(response);
     } else {
-      return Result.failure('Error while mute');
+      return Response.failure('Error while mute');
     }
   }
 

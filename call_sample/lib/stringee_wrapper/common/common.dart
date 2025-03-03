@@ -1,6 +1,6 @@
 import 'dart:io';
 
-export 'result.dart';
+export 'response.dart';
 
 bool get isIOS => Platform.isIOS;
 

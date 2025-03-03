@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
-import 'package:call_sample/stringee_wrapper/common/result.dart';
 import 'package:callkeep/callkeep.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../call/stringee_call_model.dart';
+import '../common/response.dart';
 import 'call_kit_model.dart';
 
 class CallkeepManager {
@@ -37,7 +37,7 @@ class CallkeepManager {
   String get pushToken => _pushToken;
 
   /// report outgoing call to callkit
-  Future<Result> reportOutgoingCallIfNeeded(
+  Future<Response> reportOutgoingCallIfNeeded(
       StringeeCallModel stringeeCallModel) async {
     final uuid = const Uuid().v4();
     stringeeCallModel.setUuid(uuid);
@@ -56,11 +56,11 @@ class CallkeepManager {
     );
     debugPrint(
         'reportOutgoingCallIfNeeded uuid: $uuid ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
-    return Result.success('Report outgoing call callkit successfully');
+    return Response.success('Report outgoing call callkit successfully');
   }
 
   /// report incoming call to callkit if needed
-  Future<Result> reportIncomingCallIfNeeded(
+  Future<Response> reportIncomingCallIfNeeded(
       StringeeCallModel stringeeCallModel) async {
     debugPrint(
         'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from} hasVideo: ${stringeeCallModel.call.isVideoCall}');
@@ -100,13 +100,14 @@ class CallkeepManager {
     } else {
       // TODO: - incoming all different current call from pushkit
     }
-    return Result.success('Report incoming call callkit successfully');
+    return Response.success('Report incoming call callkit successfully');
   }
 
   /// answer call from callkit if needed
-  Future<Result> answerCallIfNeeded(StringeeCallModel stringeeCallModel) async {
+  Future<Response> answerCallIfNeeded(
+      StringeeCallModel stringeeCallModel) async {
     if (stringeeCallModel.uuid.isEmpty) {
-      return Result.failure('uuid is empty');
+      return Response.failure('uuid is empty');
     }
     debugPrint(
         ' answerCallIfNeeded ${stringeeCallModel.uuid} isIncoming ${stringeeCallModel.isIncomingCall}');
@@ -116,19 +117,19 @@ class CallkeepManager {
       await callkeep
           .reportConnectedOutgoingCallWithUUID(stringeeCallModel.uuid);
     }
-    return Result.success('Answer callkit successfully');
+    return Response.success('Answer callkit successfully');
   }
 
   /// end call from callkit if needed
-  Future<Result> reportEndCallIfNeeded(
+  Future<Response> reportEndCallIfNeeded(
       {required StringeeCallModel stringeeCallModel, int? reason}) async {
     if (stringeeCallModel.uuid.isEmpty) {
-      return Result.failure('uuid is empty');
+      return Response.failure('uuid is empty');
     }
     debugPrint(
         'reportEndCallIfNeeded currentCallUuid:${_currentCallKit.uuid} ${stringeeCallModel.uuid} reason $reason');
     if (_currentCallKit.uuid != stringeeCallModel.uuid) {
-      return Result.failure('uuid is not matched');
+      return Response.failure('uuid is not matched');
     }
     if (reason == null) {
       await callkeep.endCall(stringeeCallModel.uuid);
@@ -141,21 +142,21 @@ class CallkeepManager {
       }
     }
     _currentCallKit = CallKitModel();
-    return Result.success(
+    return Response.success(
         'End callkit successfully ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
   }
 
   /// mute call from callkit if needed
-  Future<Result> reportMuteCallIfNeeded({
+  Future<Response> reportMuteCallIfNeeded({
     required StringeeCallModel stringeeCallModel,
     required bool muted,
   }) async {
     if (stringeeCallModel.uuid.isEmpty) {
-      return Result.failure('uuid is empty');
+      return Response.failure('uuid is empty');
     }
     debugPrint('reportMuteCallIfNeeded ${stringeeCallModel.uuid} $muted');
     await callkeep.setMutedCall(stringeeCallModel.uuid, muted);
-    return Result.success('Mute callkit successfully');
+    return Response.success('Mute callkit successfully');
   }
 
   /// check if callkit has active call

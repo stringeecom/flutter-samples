@@ -41,13 +41,13 @@ class StringeeCallManager {
   /// handle incoming call from stringee
   /// [call] is the incoming call
   /// [call2] is the incoming call for stringee 2
-  /// if call and call2 are both null, return a failure result
-  Future<Result<StringeeCallModel>> handleIncomingCall({
+  /// if call and call2 are both null, return a failure Response
+  Future<Response<StringeeCallModel>> handleIncomingCall({
     StringeeCall? call,
     StringeeCall2? call2,
   }) async {
     if (call == null && call2 == null) {
-      return Result.failure('Call cannot be null');
+      return Response.failure('Call cannot be null');
     }
     // create a call model
     StringeeCallModel stringeeCallModel = StringeeCallModel(
@@ -59,7 +59,7 @@ class StringeeCallManager {
     if ((!isIOS && _calls.isNotEmpty) ||
         await CallkeepManager().hasActiveCall()) {
       // do nothing if there is an active call
-      return Result.failure('There is an active call');
+      return Response.failure('There is an active call');
     }
 
     if (isIOS) {
@@ -68,14 +68,14 @@ class StringeeCallManager {
       // report incoming call if needed
       CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
       // iOS will call initAnswer when audio session is active
-      return Result.success(stringeeCallModel);
+      return Response.success(stringeeCallModel);
     } else {
-      final initializedCallResult = await stringeeCallModel.call.initAnswer();
-      if (initializedCallResult['status']) {
+      final initializedCallResponse = await stringeeCallModel.call.initAnswer();
+      if (initializedCallResponse['status']) {
         _calls.add(stringeeCallModel);
-        return Result.success(stringeeCallModel);
+        return Response.success(stringeeCallModel);
       } else {
-        return Result.failure('Error while handle Incoming call');
+        return Response.failure('Error while handle Incoming call');
       }
     }
   }
@@ -83,7 +83,7 @@ class StringeeCallManager {
   /// handle outgoing call from stringee
   /// [from] is the caller
   /// [to] is the callee
-  Future<Result<StringeeCallModel>> handleOutgoingCall({
+  Future<Response<StringeeCallModel>> handleOutgoingCall({
     required String from,
     required String to,
     StringeeCall? call,
@@ -92,7 +92,7 @@ class StringeeCallManager {
     VideoQuality? videoQuality,
   }) async {
     if (call == null && call2 == null) {
-      return Result.failure('Call cannot be null');
+      return Response.failure('Call cannot be null');
     }
     // create a call model
     StringeeCallModel stringeeCallModel = StringeeCallModel(
@@ -104,16 +104,16 @@ class StringeeCallManager {
       videoQuality: videoQuality,
     );
     _calls.add(stringeeCallModel);
-    return Result.success(stringeeCallModel);
+    return Response.success(stringeeCallModel);
   }
 
-  Future<Result> makeCall(StringeeCallModel stringeeCallModel) async {
-    Result result = await stringeeCallModel.makeCall();
-    if (result.isSuccess) {
+  Future<Response> makeCall(StringeeCallModel stringeeCallModel) async {
+    Response response = await stringeeCallModel.makeCall();
+    if (response.isSuccess) {
       await stringeeCallModel.call
           .setSpeakerphoneOn(stringeeCallModel.isVideoCall);
     }
-    return result;
+    return response;
   }
 
   Future<void> answerStringeeCall(StringeeCallModel call) async {

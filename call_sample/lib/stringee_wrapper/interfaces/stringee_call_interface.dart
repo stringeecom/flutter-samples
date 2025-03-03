@@ -162,7 +162,8 @@ class StringeeCallWrapper implements StringeeCallInterface {
 
   @override
   Future<Map> setSpeakerphoneOn(bool speakerPhoneOn) {
-    return _call.setSpeakerphoneOn(speakerPhoneOn);
+    // return _call.setSpeakerphoneOn(speakerPhoneOn);
+    return Future.value({});
   }
 
   @override
@@ -273,7 +274,8 @@ class StringeeCall2Wrapper implements StringeeCallInterface {
 
   @override
   Future<Map> setSpeakerphoneOn(bool speakerPhoneOn) {
-    return _call.setSpeakerphoneOn(speakerPhoneOn);
+    // return _call.setSpeakerphoneOn(speakerPhoneOn);
+    return Future.value({});
   }
 
   @override

@@ -14,8 +14,7 @@ import 'stringee_wrapper/stringee_wrapper.dart';
 @pragma('vm:entry-point')
 Future<void> _backgroundMessageHandler(RemoteMessage remoteMessage) async {
   if (!_initialized) {
-    await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp();
     _initialized = true;
   }
   debugPrint("Handling a background message: ${remoteMessage.data}");
@@ -35,8 +34,7 @@ void main() async {
   if (!isIOS) {
     await AndroidPushManager().handleNotificationAction();
     if (!_initialized) {
-      await Firebase.initializeApp(
-          options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp();
       _initialized = true;
     }
     FirebaseMessaging.onBackgroundMessage(_backgroundMessageHandler);
