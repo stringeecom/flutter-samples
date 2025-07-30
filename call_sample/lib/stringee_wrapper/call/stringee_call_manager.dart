@@ -1,0 +1,180 @@
+import 'dart:async';
+
+import 'package:call_sample/stringee_wrapper/common/common.dart';
+import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:stringee_plugin/stringee_plugin.dart';
+
+import '../interfaces/stringee_call_interface.dart';
+import '../push_manager/callkeep_manager.dart';
+import 'stringee_call_model.dart';
+
+class StringeeCallManager {
+  /// singleton instance
+  static final StringeeCallManager _instance = StringeeCallManager._internal();
+
+  /// private constructor
+  ///
+  /// initialize the call manager
+  StringeeCallManager._internal();
+
+  /// get the singleton instance
+  static StringeeCallManager get instance => _instance;
+
+  factory StringeeCallManager() => _instance;
+
+  /// list of calls
+  final List<StringeeCallModel> _calls = [];
+
+  /// Ended calls
+  final List<StringeeCallModel> endedCalls = [];
+
+  List<StringeeCallModel> get calls => _calls;
+
+  StringeeCallModel? callWithUuid(String uuid) {
+    try {
+      return _calls.firstWhere(
+        (element) => element.uuid == uuid,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// handle incoming call from stringee
+  /// [call] is the incoming call
+  /// [call2] is the incoming call for stringee 2
+  /// if call and call2 are both null, return a failure Response
+  Future<Response<StringeeCallModel>> handleIncomingCall({
+    StringeeCall? call,
+    StringeeCall2? call2,
+  }) async {
+    if (call == null && call2 == null) {
+      return Response.failure('Call cannot be null');
+    }
+    // check current call if needed
+    if ((!isIOS && _calls.isNotEmpty) ||
+        await CallkeepManager().hasActiveCall()) {
+      // do nothing if there is an active call
+      return Response.failure('There is an active call');
+    }
+
+    // create a call model
+    StringeeCallModel stringeeCallModel = StringeeCallModel(
+      call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
+      isIncomingCall: true,
+    );
+
+    if (isIOS) {
+      // add the call to the list
+      _calls.add(stringeeCallModel);
+      // report incoming call if needed
+      CallkeepManager().reportIncomingCallIfNeeded(stringeeCallModel);
+      // iOS will call initAnswer when audio session is active
+      return Response.success(stringeeCallModel);
+    } else {
+      final initializedCallResponse = await stringeeCallModel.call.initAnswer();
+      if (initializedCallResponse['status']) {
+        _calls.add(stringeeCallModel);
+        return Response.success(stringeeCallModel);
+      } else {
+        return Response.failure('Error while handle Incoming call');
+      }
+    }
+  }
+
+  /// handle outgoing call from stringee
+  /// [from] is the caller
+  /// [to] is the callee
+  Future<Response<StringeeCallModel>> handleOutgoingCall({
+    required String from,
+    required String to,
+    StringeeCall? call,
+    StringeeCall2? call2,
+    Map<dynamic, dynamic>? customData,
+    VideoQuality? videoQuality,
+  }) async {
+    if (call == null && call2 == null) {
+      return Response.failure('Call cannot be null');
+    }
+    // check current call if needed
+    if ((!isIOS && _calls.isNotEmpty) ||
+        await CallkeepManager().hasActiveCall()) {
+      // do nothing if there is an active call
+      return Response.failure('There is an active call');
+    }
+    // create a call model
+    StringeeCallModel stringeeCallModel = StringeeCallModel(
+      call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
+      isIncomingCall: false,
+      from: from,
+      to: to,
+      customData: customData,
+      videoQuality: videoQuality,
+    );
+    _calls.add(stringeeCallModel);
+    return Response.success(stringeeCallModel);
+  }
+
+  Future<Response> makeCall(StringeeCallModel stringeeCallModel) async {
+    Response response = await stringeeCallModel.makeCall();
+    if (response.isSuccess) {
+      await StringeeAudioManager().start();
+    } else {
+      Fluttertoast.showToast(
+        msg: response.failure ?? 'Error while making call',
+        toastLength: Toast.LENGTH_SHORT,
+      );
+      StringeeWrapper()
+          .stringeeListener
+          ?.onDismissCallWidget
+          .call('Error while making call');
+    }
+    return response;
+  }
+
+  Future<void> answerStringeeCall(StringeeCallModel call) async {
+    /// check if the call is incoming and the audio is active
+    if (call.isIncomingCall) {
+      if (isIOS) {
+        // in iOS, we need to check if the audio is active
+        // if the audio is active, we can answer the call
+        Timer.periodic(const Duration(milliseconds: 100), (timer) async {
+          debugPrint(
+              'Answer call with audio ${CallkeepManager().isActiveAudio}');
+          if (CallkeepManager().isActiveAudio && StringeeWrapper().connected) {
+            timer.cancel();
+            await call.call.initAnswer();
+            call.signalingState = StringeeSignalingState.answered;
+            await call.call.answer();
+            await StringeeAudioManager().start();
+          }
+        });
+        return;
+      }
+
+      call.signalingState = StringeeSignalingState.answered;
+      call.callState = CallState.starting;
+      await call.call.answer();
+      await StringeeAudioManager().start();
+    }
+  }
+
+  Future<void> endStringeeCall(StringeeCallModel call) async {
+    if (call.callState != CallState.ended) {
+      if (call.isShouldReject) {
+        await call.call.reject();
+      } else {
+        await call.call.hangup();
+      }
+    }
+    clear(call);
+  }
+
+  void clear(StringeeCallModel call) {
+    _calls.remove(call);
+    endedCalls.add(call);
+    StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
+  }
+}

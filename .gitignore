@@ -19,7 +19,7 @@
 .idea/
 
 # Visual Studio Code related
-.vscode/
+#.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -888,3 +888,6 @@ DerivedData/
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
 android_call_notification_sample/android/app/release/
+call_notification_sample/android/app/.cxx/
+call_sample/android/app/.cxx/
+call_notification_sample/.flutter-plugins-dependencies

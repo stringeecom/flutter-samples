@@ -1,0 +1,47 @@
+name: call_sample
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 0.0.7+1
+
+environment:
+  sdk: '>=3.3.4 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: 1.0.8
+
+  stringee_plugin: ^1.2.14
+
+  #for ios
+  uuid: ^4.5.1
+  callkeep:
+    git:
+      url: https://github.com/stringeecom/callkeep.git
+      ref: master
+  provider: ^6.1.2
+  
+  #for android
+  flutter_local_notifications: ^19.4.0
+  firebase_core: ^4.0.0
+  firebase_messaging: ^16.0.0
+  permission_handler: ^12.0.1
+  device_info_plus: ^11.3.0
+
+  # for jwt
+  dart_jsonwebtoken: ^3.2.0
+  # for shared preferences
+  shared_preferences: ^2.5.3
+  fluttertoast: ^8.2.12
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+
+  uses-material-design: true
