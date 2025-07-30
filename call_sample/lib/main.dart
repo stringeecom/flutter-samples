@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'environment_config.dart';
-import 'firebase_options.dart';
 import 'stringee_wrapper/common/common.dart';
 import 'stringee_wrapper/push_manager/android_push_manager.dart';
 import 'stringee_wrapper/stringee_wrapper.dart';
@@ -45,6 +44,7 @@ void main() async {
   if (userId.isNotEmpty) {
     debugPrint('Connect with userId: $userId when app start');
     String accessToken = getAccessToken(userId: userId, ttl: 36000);
+    StringeeWrapper().initialize();
     StringeeWrapper().connect(accessToken);
   }
 
@@ -112,7 +112,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       AndroidPushManager().listenNotificationSelect();
       StringeeWrapper().requestNotificationPermissions();
     }
-
+    StringeeWrapper().initialize();
     // add listener to listen event from StringeeWrapper
     StringeeWrapper().addListener(StringeeListener(
       onConnected: (userId) async {

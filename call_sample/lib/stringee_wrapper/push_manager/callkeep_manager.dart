@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:call_sample/stringee_wrapper/call/stringee_call_manager.dart';
+import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
 import 'package:callkeep/callkeep.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -64,6 +65,13 @@ class CallkeepManager {
       StringeeCallModel stringeeCallModel) async {
     debugPrint(
         'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from} hasVideo: ${stringeeCallModel.call.isVideoCall}');
+    // check if call has ended in list calls of StringeeCallManager
+    if (StringeeCallManager().endedCalls.any(
+        (element) => element.call.callId == stringeeCallModel.call.callId)) {
+      debugPrint(
+          'reportIncomingCallIfNeeded call has ended in StringeeCallManager');
+      return Response.failure('Call has ended');
+    }
     if (_currentCallKit.uuid == null) {
       final uuid = const Uuid().v4();
       stringeeCallModel.setUuid(uuid);
@@ -128,12 +136,21 @@ class CallkeepManager {
     }
     debugPrint(
         'reportEndCallIfNeeded currentCallUuid:${_currentCallKit.uuid} ${stringeeCallModel.uuid} reason $reason');
-    if (_currentCallKit.uuid != stringeeCallModel.uuid) {
+    if (reason == -1000 && stringeeCallModel.uuid.isNotEmpty) {
+      debugPrint(
+          'reportEndCallIfNeeded call ended on another device, do not end stringee call');
+      // if reason is -1000, it means the call is ended on another device
+      // so we need to end call in callkit
+      // but do not end stringee call
+      await callkeep.endCall(stringeeCallModel.uuid);
+    } else if (_currentCallKit.uuid != stringeeCallModel.uuid) {
       return Response.failure('uuid is not matched');
     }
     if (reason == null) {
       await callkeep.endCall(stringeeCallModel.uuid);
     } else {
+      debugPrint(
+          'reportEndCallIfNeeded reportEndCallWithUUID ${stringeeCallModel.uuid} reason: $reason');
       await callkeep.reportEndCallWithUUID(stringeeCallModel.uuid, reason);
       // reason -1000: handleOnAnotherDevice, do not need end stringee call
       if (reason != -1000) {
@@ -195,7 +212,7 @@ class CallkeepManager {
     _listenCallkitEvent();
   }
 
-  _listenCallkitEvent() {
+  void _listenCallkitEvent() {
     // audio session
     callkeep.on(CallKeepDidActivateAudioSession(), (event) {
       debugPrint('CallKeepDidActivateAudioSession');
@@ -275,10 +292,13 @@ class CallkeepManager {
 
     callkeep.on(CallKeepPushKitToken(), (event) {
       _pushToken = event.token ?? '';
+      debugPrint('CallKeepPushKitToken $_pushToken');
+      // register push token to Stringee server
+      StringeeWrapper().registerPush(isVoip: true);
     });
   }
 
-  _muteCall(String uuid, bool muted) {
+  void _muteCall(String uuid, bool muted) {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       call.mute(muted);
@@ -286,7 +306,7 @@ class CallkeepManager {
   }
 
   // end stringee call
-  _endCall(String uuid) {
+  void _endCall(String uuid) {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       StringeeCallManager().endStringeeCall(call);
@@ -295,7 +315,7 @@ class CallkeepManager {
   }
 
   // answer stringee call
-  _answerCall(String uuid) {
+  void _answerCall(String uuid) {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
       call.startTimerIfNeeded();
@@ -308,7 +328,7 @@ class CallkeepManager {
     }
   }
 
-  removeCallKitModel(String uuid) {
+  void removeCallKitModel(String uuid) {
     if (_currentCallKit.uuid == uuid) {
       _currentCallKit = CallKitModel();
     }

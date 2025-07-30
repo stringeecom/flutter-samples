@@ -1,11 +1,15 @@
+import 'package:call_sample/stringee_wrapper/call/stringee_call_model.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_audio.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_end.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_mic.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_switch.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_video.dart';
 import 'package:call_sample/stringee_wrapper/widgets/sc_calling_widget.dart';
 import 'package:call_sample/stringee_wrapper/widgets/stringee_avatar_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stringee_plugin/stringee_plugin.dart';
 
-import '../call/stringee_call_model.dart';
-import 'call_action_widget.dart';
 import 'stringee_call_widget.dart';
 
 class StringeeIncallWidget extends StatelessWidget {
@@ -93,10 +97,11 @@ class StringeeIncallWidget extends StatelessWidget {
                 ),
               ),
               StringeeAvatarWidget(text: model.callee),
+              const Spacer(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _btnSpeaker(model),
+                  _btnAudio(context, model),
                   _btnMic(model),
                 ],
               ),
@@ -199,10 +204,8 @@ class StringeeIncallWidget extends StatelessWidget {
   }
 
   Widget _btnMic(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: !model.isMute
-          ? 'assets/icons/ic-mute-new.png'
-          : 'assets/icons/ic-mute-selected-new.png',
+    return CallButtonMic(
+      enabled: !model.isMute,
       onPressed: () {
         model.muteCall();
       },
@@ -210,30 +213,52 @@ class StringeeIncallWidget extends StatelessWidget {
   }
 
   Widget _btnVideo(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: model.isVideoEnable
-          ? 'assets/icons/ic-video-new.png'
-          : 'assets/icons/ic-video-selected-new.png',
+    return CallButtonVideo(
+      enabled: model.isVideoEnable,
       onPressed: () {
         model.enableVideo();
       },
     );
   }
 
-  Widget _btnSpeaker(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: model.isSpeaker
-          ? 'assets/icons/ic-speaker-selected-new.png'
-          : 'assets/icons/ic-speaker-new.png',
+  Widget _btnAudio(BuildContext context, StringeeCallModel model) {
+    return CallButtonAudio(
+      audioDevice: model.audioDevice,
       onPressed: () {
-        model.changeSpeaker();
+        if (model.availableAudioDevices.length < 3) {
+          if (model.availableAudioDevices.length <= 1) {
+            return;
+          }
+          int position = model.availableAudioDevices.indexOf(model.audioDevice);
+          if (position == model.availableAudioDevices.length - 1) {
+            model.changeAudioDevice(model.availableAudioDevices[0]);
+          } else {
+            model.changeAudioDevice(model.availableAudioDevices[position + 1]);
+          }
+        } else {
+          showModalBottomSheet(
+            context: context,
+            builder: (context) {
+              return ListView.separated(
+                itemCount: model.availableAudioDevices.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) => ListTile(
+                  title: Text(model.availableAudioDevices[index].name!),
+                  onTap: () {
+                    model.changeAudioDevice(model.availableAudioDevices[index]);
+                    Navigator.pop(context);
+                  },
+                ),
+              );
+            },
+          );
+        }
       },
     );
   }
 
   Widget _btnEnd(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: 'assets/icons/ic-end-call-new.png',
+    return CallButtonEnd(
       onPressed: () {
         model.hangupCall();
       },
@@ -241,8 +266,7 @@ class StringeeIncallWidget extends StatelessWidget {
   }
 
   Widget _btnSwitch(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: 'assets/icons/ic-switch-camera-new.png',
+    return CallButtonSwitch(
       onPressed: () {
         model.switchCamera();
       },

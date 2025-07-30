@@ -1,4 +1,5 @@
-import 'package:call_sample/stringee_wrapper/widgets/call_action_widget.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_answer.dart';
+import 'package:call_sample/stringee_wrapper/widgets/call_button_end.dart';
 import 'package:call_sample/stringee_wrapper/widgets/sc_calling_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -90,8 +91,7 @@ class StringeeRingingWidget extends StatelessWidget {
   }
 
   Widget _btnAnswer(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: 'assets/icons/ic-answer-new.png',
+    return CallButtonAnswer(
       onPressed: () {
         model.answerCall();
       },
@@ -99,8 +99,7 @@ class StringeeRingingWidget extends StatelessWidget {
   }
 
   Widget _btnReject(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: 'assets/icons/ic-end-call-new.png',
+    return CallButtonEnd(
       onPressed: () {
         model.rejectCall();
       },
@@ -108,8 +107,7 @@ class StringeeRingingWidget extends StatelessWidget {
   }
 
   Widget _btnEnd(StringeeCallModel model) {
-    return CallActionWidget(
-      iconPath: 'assets/icons/ic-end-call-new.png',
+    return CallButtonEnd(
       onPressed: () {
         model.hangupCall();
       },

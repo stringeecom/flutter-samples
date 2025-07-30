@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
 
 class CallActionWidget extends StatelessWidget {
-  final String iconPath;
+  final IconData icon;
+  final Color color;
+  final Color backgroundColor;
   final Function() onPressed;
-  final double width;
-  final double height;
+  final double size;
 
   const CallActionWidget({
     super.key,
-    required this.iconPath,
+    required this.icon,
+    this.color = Colors.white,
+    this.backgroundColor = Colors.white54,
     required this.onPressed,
-    this.width = 70,
-    this.height = 70,
+    this.size = 28,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPressed,
-      child: Image.asset(
-        iconPath,
-        width: width,
-        height: height,
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.all(14.0),
+        backgroundColor: backgroundColor,
+        shape: const CircleBorder(),
+      ),
+      child: Icon(
+        icon,
+        color: color,
+        size: 28,
       ),
     );
   }

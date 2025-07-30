@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:call_sample/stringee_wrapper/common/common.dart';
 import 'package:call_sample/stringee_wrapper/stringee_wrapper.dart';
 import 'package:flutter/foundation.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:stringee_plugin/stringee_plugin.dart';
 
 import '../interfaces/stringee_call_interface.dart';
@@ -25,6 +26,9 @@ class StringeeCallManager {
 
   /// list of calls
   final List<StringeeCallModel> _calls = [];
+
+  /// Ended calls
+  final List<StringeeCallModel> endedCalls = [];
 
   List<StringeeCallModel> get calls => _calls;
 
@@ -49,18 +53,18 @@ class StringeeCallManager {
     if (call == null && call2 == null) {
       return Response.failure('Call cannot be null');
     }
-    // create a call model
-    StringeeCallModel stringeeCallModel = StringeeCallModel(
-      call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
-      isIncomingCall: true,
-    );
-
     // check current call if needed
     if ((!isIOS && _calls.isNotEmpty) ||
         await CallkeepManager().hasActiveCall()) {
       // do nothing if there is an active call
       return Response.failure('There is an active call');
     }
+
+    // create a call model
+    StringeeCallModel stringeeCallModel = StringeeCallModel(
+      call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
+      isIncomingCall: true,
+    );
 
     if (isIOS) {
       // add the call to the list
@@ -94,6 +98,12 @@ class StringeeCallManager {
     if (call == null && call2 == null) {
       return Response.failure('Call cannot be null');
     }
+    // check current call if needed
+    if ((!isIOS && _calls.isNotEmpty) ||
+        await CallkeepManager().hasActiveCall()) {
+      // do nothing if there is an active call
+      return Response.failure('There is an active call');
+    }
     // create a call model
     StringeeCallModel stringeeCallModel = StringeeCallModel(
       call != null ? StringeeCallWrapper(call) : StringeeCall2Wrapper(call2!),
@@ -110,8 +120,16 @@ class StringeeCallManager {
   Future<Response> makeCall(StringeeCallModel stringeeCallModel) async {
     Response response = await stringeeCallModel.makeCall();
     if (response.isSuccess) {
-      await stringeeCallModel.call
-          .setSpeakerphoneOn(stringeeCallModel.isVideoCall);
+      await StringeeAudioManager().start();
+    } else {
+      Fluttertoast.showToast(
+        msg: response.failure ?? 'Error while making call',
+        toastLength: Toast.LENGTH_SHORT,
+      );
+      StringeeWrapper()
+          .stringeeListener
+          ?.onDismissCallWidget
+          .call('Error while making call');
     }
     return response;
   }
@@ -130,7 +148,7 @@ class StringeeCallManager {
             await call.call.initAnswer();
             call.signalingState = StringeeSignalingState.answered;
             await call.call.answer();
-            await call.call.setSpeakerphoneOn(call.isVideoCall);
+            await StringeeAudioManager().start();
           }
         });
         return;
@@ -139,7 +157,7 @@ class StringeeCallManager {
       call.signalingState = StringeeSignalingState.answered;
       call.callState = CallState.starting;
       await call.call.answer();
-      await call.call.setSpeakerphoneOn(call.isVideoCall);
+      await StringeeAudioManager().start();
     }
   }
 
@@ -151,8 +169,12 @@ class StringeeCallManager {
         await call.call.hangup();
       }
     }
-    _calls.remove(call);
+    clear(call);
+  }
 
+  void clear(StringeeCallModel call) {
+    _calls.remove(call);
+    endedCalls.add(call);
     StringeeWrapper().stringeeListener?.onDismissCallWidget.call('Call ended');
   }
 }

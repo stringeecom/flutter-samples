@@ -51,7 +51,7 @@ abstract class StringeeCallInterface {
 
   Future<Map<dynamic, dynamic>> enableVideo(bool enableVideo);
 
-  Future<Map<dynamic, dynamic>> setSpeakerphoneOn(bool speakerPhoneOn);
+  Future<Result> changeAudioDevice(AudioDevice device);
 
   Future<Map<dynamic, dynamic>> switchCamera({String? cameraId});
 
@@ -161,9 +161,8 @@ class StringeeCallWrapper implements StringeeCallInterface {
   }
 
   @override
-  Future<Map> setSpeakerphoneOn(bool speakerPhoneOn) {
-    // return _call.setSpeakerphoneOn(speakerPhoneOn);
-    return Future.value({});
+  Future<Result> changeAudioDevice(AudioDevice device) {
+    return StringeeAudioManager().selectDevice(device);
   }
 
   @override
@@ -273,9 +272,8 @@ class StringeeCall2Wrapper implements StringeeCallInterface {
   }
 
   @override
-  Future<Map> setSpeakerphoneOn(bool speakerPhoneOn) {
-    // return _call.setSpeakerphoneOn(speakerPhoneOn);
-    return Future.value({});
+  Future<Result> changeAudioDevice(AudioDevice device) {
+    return StringeeAudioManager().selectDevice(device);
   }
 
   @override

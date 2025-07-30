@@ -17,7 +17,8 @@ class StringeeCallWidget extends StatefulWidget {
   State<StringeeCallWidget> createState() => _StringeeCallWidgetState();
 }
 
-class _StringeeCallWidgetState extends State<StringeeCallWidget> {
+class _StringeeCallWidgetState extends State<StringeeCallWidget>
+    with WidgetsBindingObserver {
   StringeeCallModel? model;
 
   @override
@@ -27,6 +28,43 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget> {
       AndroidPushManager().cancelIncomingCallNotification();
     }
     FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    super.didChangeAppLifecycleState(state);
+    if (model != null) {
+      if (state == AppLifecycleState.detached) {
+        if (model?.callState != CallState.ended &&
+            model?.callState != CallState.busy &&
+            model?.callState != CallState.incoming) {
+          model?.hangupCall();
+        }
+        if (!isIOS) {
+          AndroidPushManager().cancelIncomingCallNotification();
+        }
+      } else if (state == AppLifecycleState.resumed) {
+        if (!isIOS) {
+          AndroidPushManager().cancelIncomingCallNotification();
+        }
+      } else if (state == AppLifecycleState.paused) {
+        if (!isIOS) {
+          if (model?.callState == CallState.incoming) {
+            AndroidPushManager().showIncomingCallNotification(
+              model!.call.fromAlias!,
+              model!.call.from!,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void _pop() {
@@ -51,30 +89,28 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget> {
       if (mounted) {
         if (!isIOS) {
           StringeeWrapper().requestCallPermissions().then((value) {
+            if (!mounted) {
+              // Check mounted again after async gap
+              return;
+            }
             if (value) {
               if (model!.isIncomingCall) {
                 if (AndroidPushManager().isRejectFromPush) {
-                  if (mounted) {
-                    model!.rejectCall();
-                  }
+                  model!.rejectCall();
                   AndroidPushManager().isRejectFromPush = false;
                 } else if (AndroidPushManager().isAnswerFromPush) {
-                  if (mounted) {
-                    model!.answerCall();
-                  }
+                  model!.answerCall();
                   AndroidPushManager().isAnswerFromPush = false;
                 }
               } else {
-                if (mounted) {
-                  StringeeCallManager().makeCall(model!);
-                }
+                StringeeCallManager().makeCall(model!);
               }
             } else {
               Fluttertoast.showToast(
                 msg: 'Please grant permission to handle a call',
                 toastLength: Toast.LENGTH_SHORT,
               );
-              if (model!.isIncomingCall && mounted) {
+              if (model!.isIncomingCall) {
                 model!.rejectCall();
               }
               _pop();
