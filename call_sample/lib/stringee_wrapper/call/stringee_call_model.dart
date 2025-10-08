@@ -175,7 +175,7 @@ class StringeeCallModel extends ChangeNotifier {
     });
   }
 
-  _handleStringeeCallEvent(Map<dynamic, dynamic> event) async {
+  Future<void> _handleStringeeCallEvent(Map<dynamic, dynamic> event) async {
     switch (event['eventType']) {
       /// StringeeCallEvents
       case StringeeCallEvents.didChangeSignalingState:
@@ -491,7 +491,7 @@ class StringeeCallModel extends ChangeNotifier {
     return Response.success('Call answered already');
   }
 
-  startTimerIfNeeded() {
+  void startTimerIfNeeded() {
     if (!_startedTimer) {
       _startedTimer = true;
       _time = '00:00';
