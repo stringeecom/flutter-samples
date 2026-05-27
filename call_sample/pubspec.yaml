@@ -13,7 +13,10 @@ dependencies:
 
   cupertino_icons: 1.0.8
 
-  stringee_plugin: ^1.2.16
+  stringee_plugin:
+    git:
+      url: https://github.com/stringeecom/stringee_flutter_plugin.git
+      ref: feature/ios-spm-stringee-2.0.3
 
   #for ios
   uuid: ^4.5.1
@@ -43,5 +46,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  config:
+    enable-swift-package-manager: true
 
   uses-material-design: true
