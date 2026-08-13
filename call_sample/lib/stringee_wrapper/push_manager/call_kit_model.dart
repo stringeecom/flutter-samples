@@ -3,24 +3,28 @@ import 'dart:async';
 import '../call/stringee_call_model.dart';
 import 'callkeep_manager.dart';
 
+/// Correlates one CallKit UUID with its eventual Stringee call model.
+///
+/// PushKit can create CallKit UI before the SDK emits the incoming call. A
+/// bounded timeout removes orphaned system call UI when correlation never
+/// completes.
 class CallKitModel {
-  // call uuid handled by callkit
+  /// UUID handled by CallKit.
   String? uuid;
 
-  // call id of the stringee call
+  /// Server-assigned Stringee call ID.
   String? callId;
 
-  // serial of the stringee call
+  /// Stringee SDK call serial.
   int? serial;
 
-  // stringee call model
+  /// Correlated call model, or `null` while waiting for the SDK event.
   StringeeCallModel? callModel;
 
+  /// Maximum seconds to keep an uncorrelated CallKit entry.
   final int timeout;
 
-  /// [CallKitModel] constructor
-  /// all params do not required
-  /// if have [uuid] and do not have [callModel], start timeout to end call
+  /// Creates correlation state and starts a timeout when only [uuid] exists.
   CallKitModel({
     this.uuid,
     this.callId,
@@ -53,6 +57,7 @@ class CallKitModel {
   Timer? _timer;
   int _count = 0;
 
+  /// Remaining timeout counter value initialized for this model.
   int get count => _count;
 
   void _startCountTimeout() {
@@ -64,6 +69,7 @@ class CallKitModel {
     });
   }
 
+  /// Cancels orphan cleanup after the SDK call has been correlated.
   void stopCountTimeout() {
     _timer?.cancel();
   }

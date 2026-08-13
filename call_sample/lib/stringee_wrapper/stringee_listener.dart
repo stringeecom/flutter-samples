@@ -1,25 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// A listener for Stringee events
+/// Application callbacks emitted by `StringeeWrapper`.
 class StringeeListener {
+  /// Called after the SDK connects, with the authenticated Stringee user ID.
   final Function(String userId) onConnected;
+
+  /// Called after the SDK connection is closed.
   final Function() onDisConnected;
+
+  /// Called when Stringee requires a replacement access token.
   final Function() onRequestNewToken;
+
+  /// Called when the active call receives application call information.
   final Function(Map<dynamic, dynamic> event)? onReceiveCallInfo;
+
+  /// Called when the client receives a Stringee custom message.
   final Function(Map<dynamic, dynamic> event)? onReceiveCustomMessage;
+
+  /// Called when connecting fails with an SDK error code and message.
   final Function(int code, String message) onConnectError;
+
+  /// Called with the call UI that the application should present.
   final Function(Widget callWidget) onPresentCallWidget;
+
+  /// Called when the application should dismiss its presented call UI.
   final Function(String message) onDismissCallWidget;
 
-  /// [StringeeListener] constructor
-  /// [onConnected] is called when the client is connected
-  /// [onDisConnected] is called when the client is disconnected
-  /// [onRequestNewToken] is called when the client needs a new token
-  /// [onReceiveCallInfo] is called when the client receives call info
-  /// [onReceiveCustomMessage] is called when the client receives a custom message
-  /// [onConnectError] is called when the client has an error
-  /// [onPresentCallWidget] is called when the client should present a call widget
-  /// [onDismissCallWidget] is called when the client should dismiss a call widget
+  /// Creates the callback collection consumed by `StringeeWrapper`.
   StringeeListener({
     required this.onConnected,
     required this.onDisConnected,

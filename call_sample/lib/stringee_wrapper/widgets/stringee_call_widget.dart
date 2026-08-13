@@ -10,7 +10,9 @@ import 'package:provider/provider.dart';
 import '../common/common.dart';
 import '../push_manager/android_push_manager.dart';
 
+/// Full-screen call UI that switches between ringing and in-call states.
 class StringeeCallWidget extends StatefulWidget {
+  /// Creates the built-in call UI.
   const StringeeCallWidget({super.key});
 
   @override
@@ -34,29 +36,14 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) async {
     super.didChangeAppLifecycleState(state);
-    if (model != null) {
-      if (state == AppLifecycleState.detached) {
-        if (model?.callState != CallState.ended &&
-            model?.callState != CallState.busy &&
-            model?.callState != CallState.incoming) {
-          model?.hangupCall();
-        }
-        if (!isIOS) {
-          AndroidPushManager().cancelIncomingCallNotification();
-        }
-      } else if (state == AppLifecycleState.resumed) {
-        if (!isIOS) {
-          AndroidPushManager().cancelIncomingCallNotification();
-        }
-      } else if (state == AppLifecycleState.paused) {
-        if (!isIOS) {
-          if (model?.callState == CallState.incoming) {
-            AndroidPushManager().showIncomingCallNotification(
-              model!.call.fromAlias!,
-              model!.call.from!,
-            );
-          }
-        }
+    if (model != null && state == AppLifecycleState.detached) {
+      if (model?.callState != CallState.ended &&
+          model?.callState != CallState.busy &&
+          model?.callState != CallState.incoming) {
+        await model?.hangupCall();
+      }
+      if (!isIOS) {
+        await AndroidPushManager().cancelIncomingCallNotification();
       }
     }
   }
@@ -88,7 +75,7 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
 
       if (mounted) {
         if (!isIOS) {
-          StringeeWrapper().requestCallPermissions().then((value) {
+          StringeeWrapper().requestCallPermissions().then((value) async {
             if (!mounted) {
               // Check mounted again after async gap
               return;
@@ -96,14 +83,14 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
             if (value) {
               if (model!.isIncomingCall) {
                 if (AndroidPushManager().isRejectFromPush) {
-                  model!.rejectCall();
                   AndroidPushManager().isRejectFromPush = false;
+                  await model!.rejectCall();
                 } else if (AndroidPushManager().isAnswerFromPush) {
-                  model!.answerCall();
                   AndroidPushManager().isAnswerFromPush = false;
+                  await model!.answerCall();
                 }
               } else {
-                StringeeCallManager().makeCall(model!);
+                await StringeeCallManager().makeCall(model!);
               }
             } else {
               Fluttertoast.showToast(
@@ -111,9 +98,10 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
                 toastLength: Toast.LENGTH_SHORT,
               );
               if (model!.isIncomingCall) {
-                model!.rejectCall();
+                await model!.rejectCall();
+              } else {
+                StringeeCallManager().clear(model!);
               }
-              _pop();
             }
           });
         } else {
@@ -140,11 +128,10 @@ class _StringeeCallWidgetState extends State<StringeeCallWidget>
   }
 }
 
+/// Short status divider shared by ringing and connected call layouts.
 Widget dividerStatus = Container(
   margin: const EdgeInsets.only(top: 5.0),
   height: 2.0,
   width: 20.0,
-  decoration: const BoxDecoration(
-    color: Color.fromRGBO(64, 182, 73, 1.0),
-  ),
+  decoration: const BoxDecoration(color: Color.fromRGBO(64, 182, 73, 1.0)),
 );
