@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 
-// 3/4 view to display calling screen
-// 1/4 view to display call actions
+/// Layout that gives call content three quarters and actions one quarter.
 class SCCallingWidget extends StatelessWidget {
+  /// Main call status or media content.
   final Widget body;
+
+  /// Bottom call-control content.
   final Widget bottom;
 
+  /// Creates the shared call-screen layout.
   const SCCallingWidget({
     super.key,
     required this.body,

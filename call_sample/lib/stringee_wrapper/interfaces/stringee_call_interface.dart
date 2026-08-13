@@ -2,26 +2,40 @@ import 'dart:async';
 
 import 'package:stringee_plugin/stringee_plugin.dart';
 
+/// Common operations used by the sample for `StringeeCall` and `StringeeCall2`.
+///
+/// This abstraction keeps call state, UI, timeout, and notification handling
+/// independent from the selected Stringee call generation.
 abstract class StringeeCallInterface {
+  /// Server-assigned call identifier.
   String? get callId;
 
+  /// SDK serial number for this call instance.
   int? get serial;
 
+  /// Caller identifier.
   String? get from;
 
+  /// Callee identifier.
   String? get to;
 
+  /// Display alias of the caller.
   String? get fromAlias;
 
+  /// Display alias of the callee.
   String? get toAlias;
 
   // bool get isIncomingCall;
+  /// Direction and endpoint type reported by the SDK.
   StringeeCallType? get callType;
 
+  /// Custom data returned by the application server.
   String? get customDataFromYourServer;
 
+  /// Whether this call negotiates video.
   bool get isVideoCall;
 
+  /// Stream of call-specific SDK events.
   StreamController<dynamic> get eventStreamController;
 
   // SignalingState get signalingState;
@@ -29,40 +43,57 @@ abstract class StringeeCallInterface {
   // VideoResolution get videoResolution;
   // bool get peerToPeerCall;
 
+  /// Starts an outgoing call from a legacy parameter map.
   Future<Map<dynamic, dynamic>> makeCall(Map<dynamic, dynamic> parameters);
 
+  /// Starts an outgoing call from typed [params].
   Future<Map<dynamic, dynamic>> makeCallFromParams(MakeCallParams params);
 
+  /// Initializes native resources for an incoming call before answering.
   Future<Map<dynamic, dynamic>> initAnswer();
 
+  /// Answers an initialized incoming call.
   Future<Map<dynamic, dynamic>> answer();
 
+  /// Rejects an unanswered incoming call.
   Future<Map<dynamic, dynamic>> reject();
 
+  /// Hangs up an active or outgoing call.
   Future<Map<dynamic, dynamic>> hangup();
 
+  /// Sends one DTMF [dtmf] value.
   Future<Map<dynamic, dynamic>> send(String dtmf);
 
+  /// Sends application [callInfo] through the active call.
   Future<Map<dynamic, dynamic>> sendCallInfo(Map<dynamic, dynamic> callInfo);
 
+  /// Returns current SDK call statistics.
   Future<Map<dynamic, dynamic>> getCallStats();
 
+  /// Enables or disables microphone transmission.
   Future<Map<dynamic, dynamic>> mute(bool mute);
 
+  /// Enables or disables camera transmission.
   Future<Map<dynamic, dynamic>> enableVideo(bool enableVideo);
 
+  /// Selects the active [device] through the shared audio manager.
   Future<Result> changeAudioDevice(AudioDevice device);
 
+  /// Switches to [cameraId], or toggles camera when it is omitted.
   Future<Map<dynamic, dynamic>> switchCamera({String? cameraId});
 
+  /// Resumes video after an interruption supported by the SDK.
   Future<Map<dynamic, dynamic>> resumeVideo();
 
+  /// Sets mirroring for the local or remote renderer.
   Future<Map<dynamic, dynamic>> setMirror(bool isLocal, bool isMirror);
 }
 
+/// Adapts a first-generation [StringeeCall] to [StringeeCallInterface].
 class StringeeCallWrapper implements StringeeCallInterface {
   final StringeeCall _call;
 
+  /// Creates an adapter around [_call].
   StringeeCallWrapper(this._call);
 
   @override
@@ -171,9 +202,11 @@ class StringeeCallWrapper implements StringeeCallInterface {
   }
 }
 
+/// Adapts a second-generation [StringeeCall2] to [StringeeCallInterface].
 class StringeeCall2Wrapper implements StringeeCallInterface {
   final StringeeCall2 _call;
 
+  /// Creates an adapter around [_call].
   StringeeCall2Wrapper(this._call);
 
   @override

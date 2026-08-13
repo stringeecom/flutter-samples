@@ -10,19 +10,27 @@ import '../call/stringee_call_model.dart';
 import '../common/response.dart';
 import 'call_kit_model.dart';
 
+/// Synchronizes Stringee call state with iOS PushKit and CallKit.
+///
+/// The manager owns the active CallKit UUID, waits for audio-session
+/// activation before answering, and prevents CallKit-only end events from
+/// issuing a second Stringee end request.
 class CallkeepManager {
   static final CallkeepManager _instance = CallkeepManager._internal();
 
+  /// Returns the process-wide CallKit manager.
   factory CallkeepManager() {
     return _instance;
   }
 
   CallkeepManager._internal();
 
+  /// Native CallKit bridge used by this sample.
   final FlutterCallkeep callkeep = FlutterCallkeep();
 
   bool _isActiveAudio = false;
 
+  /// Whether CallKit has activated the iOS audio session.
   bool get isActiveAudio => _isActiveAudio;
 
   // current call uuid handled by callkit
@@ -32,14 +40,17 @@ class CallkeepManager {
   /// list of handled call uuids (handled by callkit) but not found in stringee calls
   /// end/answer call in callkit but not have stringee call to handle
   final List<CallKitModel> _handledCallUuids = [];
+  final Set<String> _callKitOnlyEndUuids = {};
 
   String _pushToken = '';
 
+  /// Latest PushKit token supplied by iOS.
   String get pushToken => _pushToken;
 
-  /// report outgoing call to callkit
+  /// Reports an outgoing Stringee call to CallKit.
   Future<Response> reportOutgoingCallIfNeeded(
-      StringeeCallModel stringeeCallModel) async {
+    StringeeCallModel stringeeCallModel,
+  ) async {
     final uuid = const Uuid().v4();
     stringeeCallModel.setUuid(uuid);
     await callkeep.startCall(
@@ -56,20 +67,27 @@ class CallkeepManager {
       callModel: stringeeCallModel,
     );
     debugPrint(
-        'reportOutgoingCallIfNeeded uuid: $uuid ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
+      'reportOutgoingCallIfNeeded uuid: $uuid ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}',
+    );
     return Response.success('Report outgoing call callkit successfully');
   }
 
-  /// report incoming call to callkit if needed
+  /// Reports an incoming Stringee call unless PushKit already created it.
   Future<Response> reportIncomingCallIfNeeded(
-      StringeeCallModel stringeeCallModel) async {
+    StringeeCallModel stringeeCallModel,
+  ) async {
     debugPrint(
-        'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from} hasVideo: ${stringeeCallModel.call.isVideoCall}');
+      'reportIncomingCallIfNeeded current:${_currentCallKit.uuid} uuid: ${stringeeCallModel.uuid}, from: ${stringeeCallModel.call.callId} ${stringeeCallModel.call.from} hasVideo: ${stringeeCallModel.call.isVideoCall}',
+    );
     // check if call has ended in list calls of StringeeCallManager
-    if (StringeeCallManager().endedCalls.any(
-        (element) => element.call.callId == stringeeCallModel.call.callId)) {
+    final callId = stringeeCallModel.call.callId;
+    if (callId != null &&
+        StringeeCallManager().endedCalls.any(
+              (element) => element.call.callId == callId,
+            )) {
       debugPrint(
-          'reportIncomingCallIfNeeded call has ended in StringeeCallManager');
+        'reportIncomingCallIfNeeded call has ended in StringeeCallManager',
+      );
       return Response.failure('Call has ended');
     }
     if (_currentCallKit.uuid == null) {
@@ -101,9 +119,10 @@ class CallkeepManager {
       if (_handledCallUuids
           .where((element) => element.uuid == _currentCallKit.uuid)
           .isNotEmpty) {
-        StringeeCallManager().answerStringeeCall(stringeeCallModel);
-        _handledCallUuids
-            .removeWhere((element) => element.uuid == _currentCallKit.uuid);
+        await StringeeCallManager().answerStringeeCall(stringeeCallModel);
+        _handledCallUuids.removeWhere(
+          (element) => element.uuid == _currentCallKit.uuid,
+        );
       }
     } else {
       // TODO: - incoming all different current call from pushkit
@@ -111,46 +130,61 @@ class CallkeepManager {
     return Response.success('Report incoming call callkit successfully');
   }
 
-  /// answer call from callkit if needed
+  /// Answers an incoming CallKit call or marks an outgoing call connected.
   Future<Response> answerCallIfNeeded(
-      StringeeCallModel stringeeCallModel) async {
+    StringeeCallModel stringeeCallModel,
+  ) async {
     if (stringeeCallModel.uuid.isEmpty) {
       return Response.failure('uuid is empty');
     }
     debugPrint(
-        ' answerCallIfNeeded ${stringeeCallModel.uuid} isIncoming ${stringeeCallModel.isIncomingCall}');
+      ' answerCallIfNeeded ${stringeeCallModel.uuid} isIncoming ${stringeeCallModel.isIncomingCall}',
+    );
     if (stringeeCallModel.isIncomingCall) {
       await callkeep.answerIncomingCall(stringeeCallModel.uuid);
     } else {
-      await callkeep
-          .reportConnectedOutgoingCallWithUUID(stringeeCallModel.uuid);
+      await callkeep.reportConnectedOutgoingCallWithUUID(
+        stringeeCallModel.uuid,
+      );
     }
     return Response.success('Answer callkit successfully');
   }
 
-  /// end call from callkit if needed
-  Future<Response> reportEndCallIfNeeded(
-      {required StringeeCallModel stringeeCallModel, int? reason}) async {
+  /// Ends or reports an ended CallKit call exactly once.
+  ///
+  /// Reason `-1000` means another device handled the call; only CallKit is
+  /// ended because the Stringee SDK has already processed the event.
+  Future<Response> reportEndCallIfNeeded({
+    required StringeeCallModel stringeeCallModel,
+    int? reason,
+  }) async {
     if (stringeeCallModel.uuid.isEmpty) {
       return Response.failure('uuid is empty');
     }
     debugPrint(
-        'reportEndCallIfNeeded currentCallUuid:${_currentCallKit.uuid} ${stringeeCallModel.uuid} reason $reason');
+      'reportEndCallIfNeeded currentCallUuid:${_currentCallKit.uuid} ${stringeeCallModel.uuid} reason $reason',
+    );
     if (reason == -1000 && stringeeCallModel.uuid.isNotEmpty) {
       debugPrint(
-          'reportEndCallIfNeeded call ended on another device, do not end stringee call');
+        'reportEndCallIfNeeded call ended on another device, do not end stringee call',
+      );
       // if reason is -1000, it means the call is ended on another device
       // so we need to end call in callkit
       // but do not end stringee call
+      _callKitOnlyEndUuids.add(stringeeCallModel.uuid);
       await callkeep.endCall(stringeeCallModel.uuid);
-    } else if (_currentCallKit.uuid != stringeeCallModel.uuid) {
+      _currentCallKit = CallKitModel();
+      return Response.success('End CallKit call handled on another device');
+    }
+    if (_currentCallKit.uuid != stringeeCallModel.uuid) {
       return Response.failure('uuid is not matched');
     }
     if (reason == null) {
       await callkeep.endCall(stringeeCallModel.uuid);
     } else {
       debugPrint(
-          'reportEndCallIfNeeded reportEndCallWithUUID ${stringeeCallModel.uuid} reason: $reason');
+        'reportEndCallIfNeeded reportEndCallWithUUID ${stringeeCallModel.uuid} reason: $reason',
+      );
       await callkeep.reportEndCallWithUUID(stringeeCallModel.uuid, reason);
       // reason -1000: handleOnAnotherDevice, do not need end stringee call
       if (reason != -1000) {
@@ -160,10 +194,11 @@ class CallkeepManager {
     }
     _currentCallKit = CallKitModel();
     return Response.success(
-        'End callkit successfully ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}');
+      'End callkit successfully ${stringeeCallModel.call.to} ${stringeeCallModel.call.toAlias}',
+    );
   }
 
-  /// mute call from callkit if needed
+  /// Reports the requested [muted] state to CallKit.
   Future<Response> reportMuteCallIfNeeded({
     required StringeeCallModel stringeeCallModel,
     required bool muted,
@@ -176,7 +211,7 @@ class CallkeepManager {
     return Response.success('Mute callkit successfully');
   }
 
-  /// check if callkit has active call
+  /// Returns whether any tracked call is still active in CallKit.
   Future<bool> hasActiveCall() async {
     // current callkeep doesn't support get all active calls
     // so we need to check if there is any stringee call is active
@@ -195,11 +230,10 @@ class CallkeepManager {
     return hasActiveCall;
   }
 
+  /// Configures CallKit and subscribes to system call actions.
   void configureCallKeep({String? appName}) {
     callkeep.setup(<String, dynamic>{
-      'ios': {
-        'appName': appName ?? 'Stringee',
-      },
+      'ios': {'appName': appName ?? 'Stringee'},
       'android': {
         'alertTitle': 'Permissions required',
         'alertDescription':
@@ -233,13 +267,17 @@ class CallkeepManager {
     });
     callkeep.on(CallKeepPerformEndCallAction(), (event) {
       if (event.callUUID != null) {
+        if (_callKitOnlyEndUuids.remove(event.callUUID)) {
+          return;
+        }
         _endCall(event.callUUID!);
       }
     });
 
     callkeep.on(CallKeepDidDisplayIncomingCall(), (event) {
       debugPrint(
-          'CallKeepDidDisplayIncomingCall ${event.callUUID} ${event.callId}');
+        'CallKeepDidDisplayIncomingCall ${event.callUUID} ${event.callId}',
+      );
 
       // final hasVideo = event.hasVideo ?? false;
 
@@ -250,11 +288,13 @@ class CallkeepManager {
         if (event.uuid != null &&
             event.uuid!.isNotEmpty &&
             event.fromPushKit == true) {
-          final call =
-              StringeeCallManager().callWithUuid(_currentCallKit.uuid!);
+          final call = StringeeCallManager().callWithUuid(
+            _currentCallKit.uuid!,
+          );
           if (call != null && call.call.callId == event.callId) {
             debugPrint(
-                'CallKeepDidDisplayIncomingCall currentUuid: ${_currentCallKit.uuid} end call ${event.uuid}');
+              'CallKeepDidDisplayIncomingCall currentUuid: ${_currentCallKit.uuid} end call ${event.uuid}',
+            );
             callkeep.endCall(event.uuid!);
           }
         }
@@ -285,7 +325,8 @@ class CallkeepManager {
     callkeep.on(CallKeepDidPerformDTMFAction(), (event) {
       // send DTMF tones
       debugPrint(
-          'CallKeepDidPerformDTMFAction ${event.callUUID} ${event.digits}');
+        'CallKeepDidPerformDTMFAction ${event.callUUID} ${event.digits}',
+      );
     });
 
     callkeep.on(CallKeepPushKitReceivedNotification(), (event) {});
@@ -318,7 +359,6 @@ class CallkeepManager {
   void _answerCall(String uuid) {
     final call = StringeeCallManager().callWithUuid(uuid);
     if (call != null) {
-      call.startTimerIfNeeded();
       StringeeCallManager().answerStringeeCall(call);
     } else {
       /// store uuid to handle later
@@ -328,6 +368,7 @@ class CallkeepManager {
     }
   }
 
+  /// Removes pending CallKit reconciliation state for [uuid].
   void removeCallKitModel(String uuid) {
     if (_currentCallKit.uuid == uuid) {
       _currentCallKit = CallKitModel();

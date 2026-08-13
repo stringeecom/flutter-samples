@@ -8,7 +8,9 @@ import '../call/stringee_call_model.dart';
 import 'stringee_avatar_widget.dart';
 import 'stringee_call_widget.dart';
 
+/// Incoming or outgoing pre-connected call UI.
 class StringeeRingingWidget extends StatelessWidget {
+  /// Creates the ringing UI from the nearest call model provider.
   const StringeeRingingWidget({super.key});
 
   @override

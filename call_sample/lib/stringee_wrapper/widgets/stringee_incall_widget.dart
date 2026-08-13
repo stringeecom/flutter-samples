@@ -12,7 +12,9 @@ import 'package:stringee_plugin/stringee_plugin.dart';
 
 import 'stringee_call_widget.dart';
 
+/// Connected-call UI for voice and video media.
 class StringeeIncallWidget extends StatelessWidget {
+  /// Creates the connected-call UI from the nearest call model provider.
   const StringeeIncallWidget({super.key});
 
   @override

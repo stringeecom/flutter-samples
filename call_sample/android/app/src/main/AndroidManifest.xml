@@ -41,6 +41,8 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" /> <!--For show notification in full screen-->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" /> <!--For show notification over other app-->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!--Require for android 13 or higher-->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
 
     <!--Graphic-->
     <uses-feature
@@ -80,6 +82,11 @@
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver"
             android:exported="false" />
+        <service
+            android:name="com.dexterous.flutterlocalnotifications.ForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone"
+            android:stopWithTask="false" />
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

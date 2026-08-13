@@ -20,22 +20,21 @@ class DefaultFirebaseOptions {
     if (kIsWeb) {
       return web;
     }
-    // ignore: missing_enum_constant_in_switch
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
         return ios;
       case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
         throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
+          'DefaultFirebaseOptions have not been configured for '
+          '${defaultTargetPlatform.name} - '
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
     }
-
-    throw UnsupportedError(
-      'DefaultFirebaseOptions are not supported for this platform.',
-    );
   }
 
   static const FirebaseOptions web = FirebaseOptions(
@@ -61,7 +60,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '487302158808',
     projectId: 'chat-notification-sample',
     storageBucket: 'chat-notification-sample.appspot.com',
-    iosClientId: '487302158808-nt8iiem5ffsfjavlfff75ip8qfgan3j6.apps.googleusercontent.com',
+    iosClientId:
+        '487302158808-nt8iiem5ffsfjavlfff75ip8qfgan3j6.apps.googleusercontent.com',
     iosBundleId: 'com.stringee.CallkitSample',
   );
 }
