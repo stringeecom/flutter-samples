@@ -125,7 +125,7 @@ The wrapper packages the lifecycle shared by `StringeeCall` and `StringeeCall2`:
 - Timers, audio listeners, call-event subscriptions, notifications, foreground services, and video
   views are released during cleanup.
 
-For Android video, use `stringee_plugin` `1.3.2` or newer. It safely handles the short interval in
+For Android video, use `stringee_plugin` `1.3.3` or newer. It safely handles the short interval in
 which a `StringeeCall2` remote renderer can become unavailable while its video track is replaced.
 
 ## Incoming-call notifications

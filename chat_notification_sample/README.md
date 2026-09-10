@@ -20,7 +20,7 @@ disconnects Stringee, and removes the saved token.
 - Add/remove participants, update conversation name, set roles, send typing
   state, mark as read, and delete a conversation.
 
-The sample uses `stringee_plugin: ^1.3.2` and the current Flutter Gradle plugin
+The sample uses `stringee_plugin: ^1.3.3` and the current Flutter Gradle plugin
 layout. Android targets the Flutter-provided SDK levels with AGP 8.6/Kotlin
 2.1; iOS has a minimum deployment target of 15.0 (required by the current
 Firebase Apple SDK).
