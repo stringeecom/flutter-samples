@@ -92,6 +92,14 @@ class ChatScreenState extends State<ChatScreen> {
             _clearSavedToken();
             _updateConnection(false, 'Token expired. Enter a new token');
             break;
+          case StringeeClientEvents.tokenWillExpire:
+            final body = event['body'] as Map<dynamic, dynamic>;
+            _appendLog('Token expires in ${body['expireInSeconds']}s');
+            // This sample has no token server. In your app, fetch a new token
+            // for the same user and renew it on the open connection:
+            //   await client.updateToken(await fetchTokenFromYourServer());
+            // Then save it for the next launch, as the token entry flow does.
+            break;
         }
       }),
     );

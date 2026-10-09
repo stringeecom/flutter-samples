@@ -20,10 +20,16 @@ disconnects Stringee, and removes the saved token.
 - Add/remove participants, update conversation name, set roles, send typing
   state, mark as read, and delete a conversation.
 
-The sample uses `stringee_plugin: ^1.3.3` and the current Flutter Gradle plugin
+The sample uses `stringee_plugin: ^1.3.4` and the current Flutter Gradle plugin
 layout. Android targets the Flutter-provided SDK levels with AGP 8.6/Kotlin
 2.1; iOS has a minimum deployment target of 15.0 (required by the current
-Firebase Apple SDK).
+Firebase Apple SDK and Stringee iOS SDK 2.2.0). `ios/Podfile` installs Stringee
+iOS SDK 2.2.0 from its podspec URL because that version is not on the CocoaPods
+trunk.
+
+The client listener logs the `tokenWillExpire` event. The sample has no token
+server; a real app fetches a new token for the same user and calls
+`client.updateToken(newToken)` to keep the connection open.
 
 ## Requirements
 
