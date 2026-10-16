@@ -114,30 +114,6 @@ class StringeeWrapper {
     await _stringeeClient!.connect(accessToken);
   }
 
-  /// Renews the access token of the open connection without reconnecting.
-  ///
-  /// Call it after `StringeeListener.onTokenWillExpire` with a token for the
-  /// same user, fetched from your server. On success the token is persisted for
-  /// the next launch. Returns the plugin result map (`status`, `code`,
-  /// `message`); error codes are the same on Android and iOS.
-  Future<Map<dynamic, dynamic>> updateToken(String token) async {
-    if (_stringeeClient == null) {
-      throw Exception('Wrapper is not initialized');
-    }
-    final accessToken = token.trim();
-    final result = await _stringeeClient!.updateToken(accessToken);
-    if (result['status'] == true) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(stringeeAccessTokenKey, accessToken);
-      if (!isIOS) {
-        await prefs.setString(androidStringeeAccessTokenKey, accessToken);
-      }
-    } else {
-      debugPrint('updateToken failed: ${result['code']} ${result['message']}');
-    }
-    return result;
-  }
-
   /// Returns the access token stored for automatic reconnect.
   Future<String> getSavedAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -424,13 +400,6 @@ class StringeeWrapper {
         break;
       case StringeeClientEvents.requestAccessToken:
         _stringeeListener?.onRequestNewToken.call();
-        break;
-      case StringeeClientEvents.tokenWillExpire:
-        final body = event['body'] as Map<dynamic, dynamic>? ?? const {};
-        final exp = body['exp'] as int? ?? 0;
-        final expireInSeconds = body['expireInSeconds'] as int? ?? 0;
-        debugPrint('Stringee token will expire in ${expireInSeconds}s');
-        _stringeeListener?.onTokenWillExpire?.call(exp, expireInSeconds);
         break;
       case StringeeClientEvents.didReceiveCustomMessage:
         _stringeeListener?.onReceiveCustomMessage?.call(event['body']);

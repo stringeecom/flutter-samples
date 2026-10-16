@@ -15,7 +15,7 @@ dependencies:
   firebase_core: ^4.0.0
   firebase_messaging: ^16.0.0
   shared_preferences: ^2.5.3
-  stringee_plugin: ^1.3.4
+  stringee_plugin: ^1.3.5
 
 dev_dependencies:
   flutter_test:

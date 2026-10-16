@@ -204,15 +204,6 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           connectStatus = 'Token expired. Enter a new token';
         });
       },
-      onTokenWillExpire: (exp, expireInSeconds) {
-        debugPrint('Access token expires in ${expireInSeconds}s (exp: $exp)');
-        // This sample has no token server. In your app, fetch a new token for
-        // the same user from your server and renew it on the open connection:
-        //   final newToken = await fetchTokenFromYourServer();
-        //   await StringeeWrapper().updateToken(newToken);
-        // Without renewal the server disconnects when the token expires and
-        // onRequestNewToken is called.
-      },
       onConnectError: (code, msg) {
         debugPrint('Connect error: $code - $msg');
         if (!mounted) return;

@@ -10,7 +10,7 @@ notifications on Android and iOS.
 | [`call_sample`](call_sample/) | Voice and video calls using both `StringeeCall` and `StringeeCall2`, token persistence, Android FCM notifications, and iOS PushKit/CallKit |
 | [`chat_notification_sample`](chat_notification_sample/) | Stringee Chat conversations, messages, participants, Firebase Messaging, APNs, token persistence, and logout |
 
-Both applications use `stringee_plugin: ^1.3.4`. Android release builds enable
+Both applications use `stringee_plugin: ^1.3.5`. Android release builds enable
 R8 and resource shrinking; the plugin supplies targeted Stringee, WebRTC, and
 JNI consumer rules. Access tokens are entered at runtime, stored for automatic
 reconnect, and removed on logout. Neither sample generates a Stringee access
@@ -20,9 +20,7 @@ token from an API secret in the mobile application.
 
 - A recent stable Flutter SDK with Dart `>=3.3.4`.
 - Android Studio and JDK 17 for Android builds.
-- Xcode and CocoaPods for iOS builds; iOS 15.0 or later. Each `ios/Podfile`
-  installs Stringee iOS SDK 2.2.0 from its podspec URL, because that version is
-  not published to the CocoaPods trunk.
+- Xcode and CocoaPods for iOS builds.
 - A Stringee project with the required Call or Chat features enabled.
 - A trusted backend that issues Stringee access tokens.
 - A Firebase project for Android notifications and Chat push notifications.

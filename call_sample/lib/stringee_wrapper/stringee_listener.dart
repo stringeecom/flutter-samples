@@ -11,13 +11,6 @@ class StringeeListener {
   /// Called when Stringee requires a replacement access token.
   final Function() onRequestNewToken;
 
-  /// Called about 60 seconds before the access token expires.
-  ///
-  /// [exp] is the token expiry time in epoch seconds and [expireInSeconds] the
-  /// seconds left. Fetch a new token from your server and pass it to
-  /// `StringeeWrapper().updateToken` to keep the connection open.
-  final Function(int exp, int expireInSeconds)? onTokenWillExpire;
-
   /// Called when the active call receives application call information.
   final Function(Map<dynamic, dynamic> event)? onReceiveCallInfo;
 
@@ -43,6 +36,5 @@ class StringeeListener {
     required this.onDismissCallWidget,
     this.onReceiveCallInfo,
     this.onReceiveCustomMessage,
-    this.onTokenWillExpire,
   });
 }
